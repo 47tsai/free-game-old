@@ -27,15 +27,17 @@ Client ID 是公開識別值，不是密碼。不要將 CHIAuth access token 或
 
 ## Cloudflare Worker
 
-先在 Cloudflare 建立 Worker，或使用 Wrangler：
+GitHub Token 使用 Fine-grained PAT，Repository access 僅選 `47tsai/free-game`，Repository permissions 設定 Contents: Read and write。
 
-```sh
-cd worker
-npx wrangler secret put GITHUB_TOKEN
-npx wrangler deploy
-```
+在 GitHub Repository Settings → Secrets and variables → Actions 建立以下 Repository Secrets：
 
-GitHub Token 使用 Fine-grained PAT，Repository access 僅選 `47tsai/free-game`，Repository permissions 設定 Contents: Read and write。Token 只存為 Worker Secret。
+- `FREE_GAME_GH_TOKEN`: 上述 GitHub Fine-grained PAT
+- `CLOUDFLARE_API_TOKEN`: Cloudflare API Token，需有目標帳號的 Workers Scripts 編輯權限，以及設定自訂網域所需的 Zone/DNS 權限
+- `CLOUDFLARE_ACCOUNT_ID`: Cloudflare Account ID
+
+部署 Worker 時，GitHub Actions 會將 `FREE_GAME_GH_TOKEN` 寫入 Worker Secret（同名），再執行 Wrangler 部署。請勿將 Token 寫進程式碼或提交到 Repository。
+
+部署工作流程位於 `.github/workflows/deploy-free-game-api.yml`，可從 GitHub Actions 手動執行。
 
 Worker custom domain 為 `fg-api.chi.qzz.io`。確認該網域已由 Cloudflare DNS 管理，並且 Worker 部署成功。
 
