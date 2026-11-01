@@ -30,7 +30,7 @@
       </nav>
       <div class="header-actions">
         <button class="chi-button chi-button--icon" id="theme-toggle" type="button" aria-label="切換色彩主題" title="切換色彩主題">
-          <svg class="chi-icon" aria-hidden="true"><use id="theme-icon" href="https://cdn.jsdelivr.net/gh/47tsai/chi-design-system@main/icons.svg#moon"></use></svg>
+          <svg class="chi-icon" aria-hidden="true" focusable="false"><use id="theme-icon" href="https://cdn.jsdelivr.net/gh/47tsai/chi-design-system@main/icons.svg#moon"></use></svg>
         </button>
         <button class="chi-button chi-button--secondary" id="login-button" type="button">使用 CHIAuth 登入</button>
         <button class="chi-button chi-button--secondary" id="logout-button" type="button" hidden>登出</button>
@@ -39,29 +39,29 @@
   </header>
 
   <main class="chi-template-main" id="main-content" tabindex="-1">
-    <section class="chi-container page-intro">
+    <section class="chi-container page-intro" aria-labelledby="page-title">
       <div>
         <p class="eyebrow">FREE GAME TRACKER</p>
-        <h1 class="chi-title">限時免費遊戲</h1>
-        <p class="chi-description">只列出目前仍在領取期限內的遊戲。登入後可同步自己的領取狀態。</p>
+        <h1 class="chi-title" id="page-title">限時免費遊戲</h1>
+        <p class="chi-description">集中整理仍在領取期限內的免費遊戲。登入後可同步個人領取狀態，隨時掌握還沒入庫的作品。</p>
       </div>
-      <div class="summary" aria-live="polite">
-        <div><strong id="total-count">—</strong><span>目前活動</span></div>
+      <div class="summary" aria-label="活動摘要" aria-live="polite">
+        <div><strong id="total-count">—</strong><span>進行中活動</span></div>
         <div><strong id="unclaimed-count">—</strong><span>尚未領取</span></div>
       </div>
     </section>
 
-    <section class="chi-container workspace" id="games">
+    <section class="chi-container workspace" id="games" aria-label="限時免費遊戲清單">
       <div class="toolbar">
         <label class="search-field">
           <span class="sr-only">搜尋遊戲</span>
-          <svg class="chi-icon" aria-hidden="true"><use href="https://cdn.jsdelivr.net/gh/47tsai/chi-design-system@main/icons.svg#search"></use></svg>
+          <svg class="chi-icon" aria-hidden="true" focusable="false"><use href="https://cdn.jsdelivr.net/gh/47tsai/chi-design-system@main/icons.svg#search"></use></svg>
           <input id="search-input" type="search" placeholder="搜尋遊戲名稱" autocomplete="off">
         </label>
         <div class="filters" role="group" aria-label="領取狀態篩選">
-          <button class="filter-button is-active" data-filter="all" type="button">全部</button>
-          <button class="filter-button" data-filter="unclaimed" type="button">尚未領取</button>
-          <button class="filter-button" data-filter="claimed" type="button">已領取</button>
+          <button class="filter-button is-active" data-filter="all" type="button" aria-pressed="true">全部</button>
+          <button class="filter-button" data-filter="unclaimed" type="button" aria-pressed="false">尚未領取</button>
+          <button class="filter-button" data-filter="claimed" type="button" aria-pressed="false">已領取</button>
         </div>
         <label class="platform-select">
           <span class="sr-only">平台</span>
@@ -74,7 +74,7 @@
       </div>
 
       <div class="result-meta">
-        <span id="result-count">載入中…</span>
+        <span id="result-count" aria-live="polite">載入中…</span>
         <button class="text-button" id="refresh-button" type="button">重新整理</button>
       </div>
 
@@ -83,7 +83,7 @@
       </div>
       <div id="empty-state" class="empty-state" hidden>
         <h2>目前沒有符合條件的遊戲</h2>
-        <p>新的限免活動出現後，清單會自動更新。</p>
+        <p>調整搜尋條件，或等候下一批限免活動更新。</p>
       </div>
       <p class="data-note" id="updated-at"></p>
       <div class="error-message" id="error-message" role="alert" hidden></div>
