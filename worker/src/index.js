@@ -58,6 +58,16 @@ async function readJsonFile(path, env, fallback) {
   return { sha: file.sha, document: JSON.parse(decodeBase64(file.content)) };
 }
 
+async function readPublicJsonFile(path, fallback) {
+  const response = await fetch(
+    "https://raw.githubusercontent.com/" + REPO + "/main/" + path,
+    { headers: { "Cache-Control": "no-cache" } },
+  );
+  if (response.status === 404) return fallback;
+  if (!response.ok) throw new Error("GitHub 讀取 " + path + " 失敗：" + response.status);
+  return response.json();
+}
+
 async function readManualClaims(env) {
   const result = await readJsonFile(MANUAL_PATH, env, { claims: {} });
   if (!result.document || typeof result.document !== "object"
@@ -67,9 +77,18 @@ async function readManualClaims(env) {
   return result;
 }
 
-async function readAutoClaims(env) {
-  const result = await readJsonFile(AUTO_PATH, env, {});
-  return result.document && typeof result.document === "object" ? result.document : {};
+async function readPublicManualClaims() {
+  const document = await readPublicJsonFile(MANUAL_PATH, { claims: {} });
+  if (!document || typeof document !== "object"
+      || !document.claims || typeof document.claims !== "object") {
+    throw new Error("手動領取資料格式錯誤");
+  }
+  return document.claims;
+}
+
+async function readAutoClaims() {
+  const document = await readPublicJsonFile(AUTO_PATH, {});
+  return document && typeof document === "object" ? document : {};
 }
 
 async function readActiveGames() {
@@ -205,8 +224,8 @@ export default {
       if (request.method === "GET" && url.pathname === "/api/games") {
         const [active, manual, automatic] = await Promise.all([
           readActiveGames(),
-          readManualClaims(env),
-          readAutoClaims(env),
+          readPublicManualClaims(),
+          readAutoClaims(),
         ]);
         const games = active.games.map((game) => {
           const key = platformKey(game.platform) + "|" + normalizeTitle(game.name);
