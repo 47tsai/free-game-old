@@ -40,3 +40,20 @@ jobs:
       - name: Deploy website
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Verify Cloudflare DNS permissions and current records
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_ZONE_ID: 24c702da27c90f0da38e9f80c0bbe58e
+        run: |
+          set -euo pipefail
+          echo "=== DNS records ==="
+          dns=$(curl -fsS -G "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records" \
+            -H "Authorization: Bearer $CF_API_TOKEN" \
+            --data-urlencode "name=fg.chi.qzz.io")
+          echo "$dns" | jq -c '.result[] | {id,type,name,content,proxied,ttl}'
+          echo "=== Pages custom domains ==="
+          domains=$(curl -fsS "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/pages/projects/free-game/domains" \
+            -H "Authorization: Bearer $CF_API_TOKEN")
+          echo "$domains" | jq -c '.result[] | {id,name,status,verification_status:.verification_data.status}'
