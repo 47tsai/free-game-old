@@ -11,48 +11,32 @@ on:
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
 
 jobs:
   deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
         with:
-          node-version: 22
+          enablement: true
 
-      - name: Ensure Pages project exists
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          npx --yes wrangler@4 pages project list --json > /tmp/pages-projects.json
-          if ! grep -q '"name"[[:space:]]*:[[:space:]]*"free-game"' /tmp/pages-projects.json; then
-            npx --yes wrangler@4 pages project create free-game --production-branch main
-          fi
+      - name: Upload website
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
 
-      - name: Deploy frontend
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: npx --yes wrangler@4 pages deploy web --project-name free-game --branch main
-
-      - name: Attach custom domain
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          set -euo pipefail
-          response="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/free-game/domains")"
-          if echo "$response" | grep -q '"name"[[:space:]]*:[[:space:]]*"fg.chi.qzz.io"'; then
-            echo "Custom domain already attached."
-          else
-            curl -fsS -X POST \
-              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-              -H "Content-Type: application/json" \
-              --data '{"name":"fg.chi.qzz.io"}' \
-              "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/free-game/domains"
-          fi
+      - name: Deploy website
+        id: deployment
+        uses: actions/deploy-pages@v4
