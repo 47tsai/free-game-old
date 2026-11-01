@@ -61,7 +61,7 @@ async function readJsonFile(path, env, fallback) {
 async function readPublicJsonFile(path, fallback) {
   const response = await fetch(
     "https://raw.githubusercontent.com/" + REPO + "/main/" + path,
-    { headers: { "Cache-Control": "no-cache" } },
+    { headers: { "Cache-Control": "no-cache" }, signal: AbortSignal.timeout(12000) },
   );
   if (response.status === 404) return fallback;
   if (!response.ok) throw new Error("GitHub 讀取 " + path + " 失敗：" + response.status);
@@ -94,7 +94,7 @@ async function readAutoClaims() {
 async function readActiveGames() {
   const response = await fetch(
     "https://raw.githubusercontent.com/" + REPO + "/main/" + ACTIVE_PATH,
-    { headers: { "Cache-Control": "no-cache" } },
+    { headers: { "Cache-Control": "no-cache" }, signal: AbortSignal.timeout(12000) },
   );
   if (response.status === 404) return { updated_at: null, games: [] };
   if (!response.ok) throw new Error("GitHub 讀取限免清單失敗：" + response.status);
