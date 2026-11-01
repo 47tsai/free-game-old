@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f6f8fc">
+  <meta name="description" content="整理目前仍可領取的限時免費遊戲，追蹤自己的領取狀態。">
+  <title>限時免費遊戲 · CHI</title>
+  <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/47tsai/chi-design-system/main/logo/blue-w.png">
+  <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/47tsai/chi-design-system/main/logo/blue-w.png">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/47tsai/chi-design-system@main/tokens.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/47tsai/chi-design-system@main/components.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/47tsai/chi-design-system@main/navigation.css">
+  <link rel="stylesheet" href="./app.css">
+  <script src="./config.js"></script>
+  <script src="./app.js" defer></script>
+</head>
+<body class="chi-page">
+  <a class="chi-skip-link" href="#main-content">跳至主要內容</a>
+  <header class="chi-site-header">
+    <div class="chi-container chi-site-header__inner">
+      <a class="chi-brand" href="./" aria-label="限時免費遊戲首頁">
+        <img class="brand-logo brand-logo-light" src="https://raw.githubusercontent.com/47tsai/chi-design-system/main/logo/blue-b.png" alt="">
+        <img class="brand-logo brand-logo-dark" src="https://raw.githubusercontent.com/47tsai/chi-design-system/main/logo/blue-w.png" alt="">
+        <span>Free Games</span>
+      </a>
+      <nav class="chi-nav" aria-label="主要導覽">
+        <a href="#games" aria-current="page">限免清單</a>
+      </nav>
+      <div class="header-actions">
+        <button class="chi-button chi-button--icon" id="theme-toggle" type="button" aria-label="切換色彩主題" title="切換色彩主題">
+          <svg class="chi-icon" aria-hidden="true"><use id="theme-icon" href="https://cdn.jsdelivr.net/gh/47tsai/chi-design-system@main/icons.svg#moon"></use></svg>
+        </button>
+        <button class="chi-button chi-button--secondary" id="login-button" type="button">使用 CHIAuth 登入</button>
+        <button class="chi-button chi-button--secondary" id="logout-button" type="button" hidden>登出</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="chi-template-main" id="main-content" tabindex="-1">
+    <section class="chi-container page-intro">
+      <div>
+        <p class="eyebrow">FREE GAME TRACKER</p>
+        <h1 class="chi-title">限時免費遊戲</h1>
+        <p class="chi-description">只列出目前仍在領取期限內的遊戲。登入後可同步自己的領取狀態。</p>
+      </div>
+      <div class="summary" aria-live="polite">
+        <div><strong id="total-count">—</strong><span>目前活動</span></div>
+        <div><strong id="unclaimed-count">—</strong><span>尚未領取</span></div>
+      </div>
+    </section>
+
+    <section class="chi-container workspace" id="games">
+      <div class="toolbar">
+        <label class="search-field">
+          <span class="sr-only">搜尋遊戲</span>
+          <svg class="chi-icon" aria-hidden="true"><use href="https://cdn.jsdelivr.net/gh/47tsai/chi-design-system@main/icons.svg#search"></use></svg>
+          <input id="search-input" type="search" placeholder="搜尋遊戲名稱" autocomplete="off">
+        </label>
+        <div class="filters" role="group" aria-label="領取狀態篩選">
+          <button class="filter-button is-active" data-filter="all" type="button">全部</button>
+          <button class="filter-button" data-filter="unclaimed" type="button">尚未領取</button>
+          <button class="filter-button" data-filter="claimed" type="button">已領取</button>
+        </div>
+        <label class="platform-select">
+          <span class="sr-only">平台</span>
+          <select id="platform-filter">
+            <option value="all">所有平台</option>
+            <option value="Epic Games Store">Epic Games Store</option>
+            <option value="Steam">Steam</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="result-meta">
+        <span id="result-count">載入中…</span>
+        <button class="text-button" id="refresh-button" type="button">重新整理</button>
+      </div>
+
+      <div id="game-list" class="game-list" aria-live="polite">
+        <div class="loading-state">正在載入限免清單…</div>
+      </div>
+      <div id="empty-state" class="empty-state" hidden>
+        <h2>目前沒有符合條件的遊戲</h2>
+        <p>新的限免活動出現後，清單會自動更新。</p>
+      </div>
+      <p class="data-note" id="updated-at"></p>
+      <div class="error-message" id="error-message" role="alert" hidden></div>
+    </section>
+  </main>
+
+  <footer class="chi-template-footer">
+    <div class="chi-container chi-template-footer__inner">
+      <span>CHI · Free Game Tracker</span>
+      <a href="https://github.com/47tsai/free-game" target="_blank" rel="noreferrer">資料來源與專案</a>
+    </div>
+  </footer>
+</body>
+</html>
