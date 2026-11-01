@@ -237,7 +237,7 @@ export default {
         return json({
           updated_at: active.updated_at,
           games,
-          manual_claims: manual.document.claims,
+          manual_claims: manual,
         }, 200, origin);
       }
 
