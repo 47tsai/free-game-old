@@ -69,3 +69,49 @@ body.chi-page{display:flex;min-width:320px;min-height:100vh;min-height:100dvh;fl
 @media(max-width:380px){.brand-logo{width:1.7rem;height:1.7rem}.header-actions .chi-button{padding-inline:.45rem}.game-card{grid-template-columns:92px minmax(0,1fr)}.game-topline{align-items:flex-start;flex-direction:column;gap:.3rem}.card-actions{gap:.35rem}.claim-toggle{padding-inline:.45rem}}
 @media(max-width:560px){.chi-template-footer__inner{align-items:flex-start;flex-direction:column;justify-content:center;gap:.25rem}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* Header and footer follow the Chi Status site shell. */
+.site-header{position:sticky;top:0;z-index:20;border-bottom:1px solid var(--chi-color-border);background:var(--chi-color-surface)}
+.site-header__inner{display:flex;min-height:68px;align-items:center;gap:22px}
+.site-brand{display:flex;align-items:center;gap:10px;color:var(--chi-color-text-strong);font-weight:800;letter-spacing:.01em;text-decoration:none;white-space:nowrap}
+.site-brand>span:last-child{display:block}
+.site-brand small{display:block;margin-top:1px;color:var(--chi-color-text-subtle);font-size:10px;letter-spacing:.11em;font-weight:650}
+.brand-mark{display:grid;width:34px;height:34px;flex:none;place-items:center;overflow:hidden}
+.brand-mark img{width:28px;height:28px;object-fit:contain}
+.brand-logo-dark{display:none}
+[data-chi-theme=dark] .brand-logo-light{display:none}
+[data-chi-theme=dark] .brand-logo-dark{display:block}
+.site-nav{display:flex;align-items:center;gap:5px;margin-left:auto}
+.site-nav a{padding:8px 12px;border-radius:8px;color:var(--chi-color-text-muted);font-size:13px;font-weight:650;text-decoration:none}
+.site-nav a:hover,.site-nav a[aria-current=page]{background:var(--chi-color-surface-muted);color:var(--chi-color-accent)}
+.site-tools{display:flex;align-items:center;gap:8px}
+.site-button{display:inline-flex;min-height:42px;align-items:center;justify-content:center;gap:8px;padding:8px 13px;border:1px solid var(--chi-color-border-strong);border-radius:var(--chi-radius-md);background:var(--chi-color-surface);color:var(--chi-color-text);font:inherit;font-size:13px;font-weight:650;text-decoration:none;cursor:pointer}
+.site-button:hover{border-color:var(--chi-color-accent);background:var(--chi-color-surface-muted)}
+.site-button svg{width:16px;height:16px;flex:none}
+.menu-button{display:none;width:42px;padding:0}
+.site-footer{margin-top:2rem;border-top:1px solid var(--chi-color-border);padding:20px 0;background:var(--chi-color-surface);color:var(--chi-color-text-subtle);font-size:12px}
+.site-footer__inner{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.site-footer a{color:var(--chi-color-text-muted);text-decoration:none}
+.site-footer a:hover{color:var(--chi-color-accent)}
+.chi-skip-link{position:absolute;left:12px;top:-60px;z-index:50;padding:10px 14px;border:1px solid var(--chi-color-border);border-radius:var(--chi-radius-md);background:var(--chi-color-surface)}
+.chi-skip-link:focus{top:12px}
+@media(max-width:900px){
+ .site-header__inner{gap:12px}
+ .site-nav{display:none;position:absolute;top:calc(100% + 1px);right:20px;min-width:210px;margin:0;padding:8px;border:1px solid var(--chi-color-border);border-radius:var(--chi-radius-lg);background:var(--chi-color-surface);box-shadow:var(--chi-shadow-subtle)}
+ .site-nav.is-open{display:grid}
+ .site-nav a{padding:10px}
+ .menu-button{display:inline-flex}
+}
+@media(max-width:620px){
+ .chi-container{width:calc(100% - 28px)}
+ .site-header__inner{min-height:60px;gap:8px}
+ .site-brand{gap:8px;font-size:14px}
+ .brand-mark{width:32px;height:32px}
+ .site-brand small{font-size:9px}
+ .site-tools{gap:5px}
+ .site-button{min-height:38px;padding:7px 9px}
+ .menu-button{width:38px}
+ .site-nav{right:14px}
+ .auth-button{font-size:12px}
+ .site-footer__inner{align-items:flex-start;flex-direction:column;gap:5px}
+}
