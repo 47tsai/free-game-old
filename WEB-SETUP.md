@@ -57,3 +57,9 @@ Worker custom domain 為 `fg-api.chi.qzz.io`。確認該網域已由 Cloudflare 
 - FGC 狀態從既有 `data/claims.json` 讀取；手動狀態優先，且可手動取消。
 - 手動紀錄在活動過期後清除，不作為永久收藏或歷史紀錄。
 - 前端只在記憶體保存 access token；OAuth state 與 PKCE verifier 僅暫存在 sessionStorage，交換完成即清除。
+### 首次初始化活動清單
+
+新增活動索引功能後，需在 GitHub Actions 手動執行一次 **Free Game Notifier**，讓 notifier 重新掃描 RSS 文章並建立 `data/active-games.json`。完成後，確認該檔案已提交至 `main`；若仍不存在，請檢查該次執行的 `Run notifier` 與 `Save state` logs。
+
+此初始化會執行完整通知流程，若期間發現尚未通知的新活動，仍可能發送 Discord 通知；也會同步處理 ntfy 領取狀態。它不會部署 Cloudflare Worker。
+
