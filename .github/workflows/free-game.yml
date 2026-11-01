@@ -13,7 +13,7 @@ permissions:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -31,8 +31,9 @@ jobs:
         if: always()
         run: |
           git add data/processed.json
-          if [ -f data/claims.json ]; then git add data/claims.json; fi
-          if [ -f data/ntfy_cursor.json ]; then git add data/ntfy_cursor.json; fi
+          for file in data/claims.json data/ntfy_cursor.json data/active-games.json; do
+            if [ -f "$file" ]; then git add "$file"; fi
+          done
           if git diff --cached --quiet; then exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
