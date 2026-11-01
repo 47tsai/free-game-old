@@ -13,4 +13,4 @@ crons = ["17 */6 * * *"]
 [vars]
 APP_ORIGIN = "https://fg.chi.qzz.io"
 CHI_AUTH_URL = "https://auth.chi.qzz.io"
-CHI_CLIENT_ID = "REPLACE_WITH_CHIAUTH_CLIENT_ID"
+CHI_CLIENT_ID = "MN7nps4p8bc9oFVHwR1TdZejZyaUmXLt"
