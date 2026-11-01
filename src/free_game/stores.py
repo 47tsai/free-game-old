@@ -66,7 +66,7 @@ class SteamPriceResolver:
             return datetime.fromtimestamp(
                 expiration, timezone.utc
             ).astimezone(ZoneInfo("Asia/Taipei")).isoformat(timespec="seconds")
-        except (TypeError, ValueError, KeyError, OSError):
+        except Exception:
             return ""
 
     def resolve_rating(self, link):
