@@ -125,7 +125,7 @@
     const headers = new Headers(options.headers || {});
     if (accessToken) headers.set("Authorization", "Bearer " + accessToken);
     if (options.body) headers.set("Content-Type", "application/json");
-    const response = await fetch(apiBase + path, { ...options, headers });
+    const response = await fetch(apiBase + path, { ...options, headers, signal: options.signal || AbortSignal.timeout(15000) });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
       if (response.status === 401) {
