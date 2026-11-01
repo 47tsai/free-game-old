@@ -42,7 +42,7 @@ async function githubRequest(path, env, options = {}) {
     ...options,
     headers: {
       Accept: "application/vnd.github+json",
-      Authorization: "Bearer " + env.GITHUB_TOKEN,
+      Authorization: "Bearer " + env.FREE_GAME_GH_TOKEN,
       "X-GitHub-Api-Version": "2022-11-28",
       "User-Agent": "chi-free-game-tracker",
       ...(options.headers || {}),
