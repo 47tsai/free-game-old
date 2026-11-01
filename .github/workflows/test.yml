@@ -18,5 +18,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Run unit tests
+      - name: Run Python unit tests
         run: PYTHONPATH=src python -m unittest discover -s tests -v
+      - name: Check JavaScript syntax
+        run: |
+          node --check web/app.js
+          node --check worker/src/index.js
+      - name: Check Wrangler configuration
+        run: python -c "import tomllib; tomllib.load(open('worker/wrangler.toml', 'rb'))"
