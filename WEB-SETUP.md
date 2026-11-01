@@ -35,9 +35,14 @@ GitHub Token 使用 Fine-grained PAT，Repository access 僅選 `47tsai/free-gam
 - `CLOUDFLARE_API_TOKEN`: Cloudflare API Token，需有目標帳號的 Workers Scripts 編輯權限，以及設定自訂網域所需的 Zone/DNS 權限
 - `CLOUDFLARE_ACCOUNT_ID`: Cloudflare Account ID
 
-部署 Worker 時，GitHub Actions 會將 `FREE_GAME_GH_TOKEN` 寫入 Worker Secret（同名），再執行 Wrangler 部署。請勿將 Token 寫進程式碼或提交到 Repository。
+首次部署前，在本機安裝 Wrangler 並登入 Cloudflare，進入 `worker/` 目錄後執行：
 
-部署工作流程位於 `.github/workflows/deploy-free-game-api.yml`，可從 GitHub Actions 手動執行。
+```sh
+wrangler secret put FREE_GAME_GH_TOKEN --config wrangler.toml
+wrangler deploy --config wrangler.toml
+```
+
+命令會互動式要求輸入 GitHub Fine-grained PAT。Token 只會存入 Worker Secret，不要寫進程式碼或提交到 Repository。之後更新 Worker 程式時，重新執行 `wrangler deploy --config wrangler.toml` 即可。
 
 Worker custom domain 為 `fg-api.chi.qzz.io`。確認該網域已由 Cloudflare DNS 管理，並且 Worker 部署成功。
 
@@ -50,7 +55,7 @@ Worker custom domain 為 `fg-api.chi.qzz.io`。確認該網域已由 Cloudflare 
 - Build output directory: `web`
 - Custom domain: `fg.chi.qzz.io`
 
-合併程式分支後，Pages 會從 `web/` 部署靜態網站。
+更新 `main` 後，Pages 會從 `web/` 部署靜態網站。
 
 ## 資料與狀態
 
