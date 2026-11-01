@@ -1,6 +1,6 @@
 :root{font-synthesis:none}
 html{min-height:100%;scroll-behavior:smooth}
-body.chi-page{display:flex;min-width:320px;min-height:100vh;min-height:100dvh;flex-direction:column;background:var(--chi-color-background)}
+body.chi-page{display:flex;min-width:320px;min-height:100vh;min-height:100dvh;flex-direction:column;background:var(--chi-color-surface-muted)}
 .chi-template-main{flex:1;min-width:0}
 .chi-template-footer{margin-top:2rem;border-top:1px solid var(--chi-color-border);background:var(--chi-color-surface)}
 .chi-template-footer__inner{display:flex;min-height:64px;align-items:center;justify-content:space-between;gap:1rem;padding-block:1rem;color:var(--chi-color-text-muted);font-size:var(--chi-text-xs)}
