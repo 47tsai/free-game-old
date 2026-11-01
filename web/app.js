@@ -298,6 +298,22 @@
     });
   });
 
+
+  const menuButton = document.getElementById("menu-toggle");
+  const siteNav = document.getElementById("site-nav");
+  menuButton?.addEventListener("click", () => {
+    const open = siteNav.classList.toggle("is-open");
+    menuButton.setAttribute("aria-expanded", String(open));
+    menuButton.setAttribute("aria-label", open ? "關閉導覽選單" : "開啟導覽選單");
+  });
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest("#site-nav") && !event.target.closest("#menu-toggle")) {
+      siteNav?.classList.remove("is-open");
+      menuButton?.setAttribute("aria-expanded", "false");
+      menuButton?.setAttribute("aria-label", "開啟導覽選單");
+    }
+  });
+
   setupTheme();
   updateAuthControls();
   handleCallback().finally(loadGames);
