@@ -292,6 +292,7 @@
       activeFilter = button.dataset.filter;
       document.querySelectorAll("[data-filter]").forEach((item) => {
         item.classList.toggle("is-active", item === button);
+        item.setAttribute("aria-pressed", String(item === button));
       });
       render();
     });
