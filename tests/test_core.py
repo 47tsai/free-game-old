@@ -716,7 +716,7 @@ class DiscordTests(unittest.TestCase):
         self.assertEqual(payload["allowed_mentions"], {"parse": []})
 
 
-class AITests(unittest.TestCase):
+class RuleBasedExtractorTests(unittest.TestCase):
     def test_deadline_normalizes_midnight_and_noon_periods(self):
         from free_game.ai import extract_deadline
 
@@ -732,176 +732,62 @@ class AITests(unittest.TestCase):
             with self.subTest(source=source):
                 self.assertEqual(extract_deadline(source), expected)
 
-    def test_markdown_json_fence_is_removed(self):
-        from free_game.ai import GeminiExtractor
-
-        class FakeHttp:
-            def post_json(self, url, payload, timeout=45, headers=None):
-                body = json.dumps({
-                    "candidates": [{"content": {"parts": [{
-                        "text": "```json\n[{\"name\":\"Example\",\"store_index\":1}]\n```"
-                    }]}}]
-                }).encode()
-                return 200, body, {}
+    def test_extracts_game_name_from_store_anchor_and_strips_store_label(self):
+        from free_game.ai import RuleBasedExtractor
 
         article = parse_article(
-            b'<html><body><a href="https://store.steampowered.com/app/1/">Example</a></body></html>',
-            "https://example.com/article", "Example",
+            b'<html><body><a href="https://store.epicgames.com/p/example">'
+            b'Epic World - Hunt For Quest｜Epic Games Store</a></body></html>',
+            "https://www.4gamers.com.tw/article/x",
+            "EGS限免：《Epic World - Hunt For Quest》限時免費領",
         )
-        games = GeminiExtractor(FakeHttp(), "key", "gemini-test").extract(article)
-        self.assertEqual(games[0].name, "Example")
+        games = RuleBasedExtractor().extract(article)
+        self.assertEqual(len(games), 1)
+        self.assertEqual(games[0].name, "Epic World - Hunt For Quest")
+        self.assertEqual(games[0].platform, "Epic Games Store")
 
-    def test_store_index_maps_to_candidate_url(self):
-        from free_game.ai import GeminiExtractor
-
-        class FakeHttp:
-            def post_json(self, url, payload, timeout=45, headers=None):
-                body = json.dumps({
-                    "candidates": [{"content": {"parts": [{
-                        "text": "[{\"name\":\"Example\",\"original_price\":\"$52\",\"deadline\":\"2026-11-03T00:00:00+08:00\",\"store_index\":2}]"
-                    }]}}]
-                }).encode()
-                return 200, body, {}
+    def test_uses_single_unambiguous_headline_title_when_anchor_is_generic(self):
+        from free_game.ai import RuleBasedExtractor
 
         article = parse_article(
-            b'<html><body>'
-            b'<a href="https://store.steampowered.com/app/1/">One</a>'
-            b'<a href="https://store.epicgames.com/p/example">Example</a>'
-            b'</body></html>',
-            "https://example.com/article", "Example",
+            b'<html><body><a href="https://store.steampowered.com/app/123/">立即領取</a></body></html>',
+            "https://example.com/article",
+            "Steam 限免：《Example Game》限時免費",
         )
-        games = GeminiExtractor(FakeHttp(), "key", "gemini-test").extract(article)
-        self.assertEqual(games[0].link, "https://store.epicgames.com/p/example")
-        self.assertEqual(games[0].original_price, "")
-        self.assertEqual(games[0].deadline, "")
+        games = RuleBasedExtractor().extract(article)
+        self.assertEqual([game.name for game in games], ["Example Game"])
 
-        self.assertEqual(games[0].genre, "")
-        self.assertEqual(games[0].gameplay, "")
-        self.assertEqual(games[0].rating, "")
-        self.assertEqual(games[0].brief, "")
-
-    def test_invalid_store_link_is_rejected(self):
-        from free_game.ai import GeminiExtractor
-
-        class FakeHttp:
-            def post_json(self, url, payload, timeout=45, headers=None):
-                body = json.dumps({
-                    "candidates": [{"content": {"parts": [{
-                        "text": "[{\"name\":\"Example\",\"store_index\":99}]"
-                    }]}}]
-                }).encode()
-                return 200, body, {}
+    def test_does_not_guess_when_multiple_headline_titles_and_generic_anchor(self):
+        from free_game.ai import RuleBasedExtractor
 
         article = parse_article(
-            b'<html><body><a href="https://store.steampowered.com/app/1/">Example</a></body></html>',
-            "https://example.com/article", "Example",
+            b'<html><body><a href="https://store.steampowered.com/app/123/">立即領取</a></body></html>',
+            "https://example.com/article",
+            "限免：《Example Game》與《Another Game》",
         )
-        self.assertEqual(
-            GeminiExtractor(FakeHttp(), "key", "gemini-test").extract(article),
-            [],
-        )
+        self.assertEqual(RuleBasedExtractor().extract(article), [])
 
-
-    def test_gemini_api_error_includes_status_and_message(self):
-        from free_game.ai import GeminiExtractor
-
-        class FakeHttp:
-            def post_json(self, url, payload, **kwargs):
-                body = json.dumps({
-                    "error": {
-                        "code": 400,
-                        "status": "INVALID_ARGUMENT",
-                        "message": "Invalid API key format",
-                    }
-                }).encode()
-                return 200, body, {}
+    def test_ignores_generic_anchor_without_unambiguous_title(self):
+        from free_game.ai import RuleBasedExtractor
 
         article = parse_article(
-            b'<html><body><a href="https://store.steampowered.com/app/1/">Example</a></body></html>',
-            "https://example.com/article", "Example",
+            b'<html><body><a href="https://store.steampowered.com/app/123/">立即領取</a></body></html>',
+            "https://example.com/article",
+            "Steam 限免活動",
         )
-        with self.assertRaisesRegex(
-            RuntimeError, "Gemini API error 400 .*Invalid API key format"
-        ):
-            GeminiExtractor(FakeHttp(), "key", "gemini-test").extract(article)
+        self.assertEqual(RuleBasedExtractor().extract(article), [])
 
-    def test_gemini_prompt_block_is_reported_without_retry(self):
-        from free_game.ai import GeminiExtractor
+    def test_does_not_extract_dlsite_links(self):
+        from free_game.ai import RuleBasedExtractor
 
-        class FakeHttp:
-            calls = 0
-
-            def post_json(self, url, payload, **kwargs):
-                self.calls += 1
-                body = json.dumps({
-                    "promptFeedback": {"blockReason": "SAFETY"}
-                }).encode()
-                return 200, body, {}
-
-        http = FakeHttp()
         article = parse_article(
-            b'<html><body><a href="https://store.steampowered.com/app/1/">Example</a></body></html>',
-            "https://example.com/article", "Example",
+            b'<html><body><a href="https://www.dlsite.com/maniax/work/=/product_id/RJ123/">Example</a></body></html>',
+            "https://example.com/article",
+            "《Example》限時免費",
         )
-        with self.assertRaisesRegex(RuntimeError, "blocked the prompt: SAFETY"):
-            GeminiExtractor(http, "key", "gemini-test").extract(article)
-        self.assertEqual(http.calls, 1)
+        self.assertEqual(RuleBasedExtractor().extract(article), [])
 
-    def test_gemini_transient_api_error_retries_once(self):
-        from free_game.ai import GeminiExtractor
 
-        class FakeHttp:
-            calls = 0
-
-            def post_json(self, url, payload, **kwargs):
-                self.calls += 1
-                if self.calls == 1:
-                    body = json.dumps({
-                        "error": {
-                            "code": 503,
-                            "status": "UNAVAILABLE",
-                            "message": "Temporary outage",
-                        }
-                    }).encode()
-                else:
-                    body = json.dumps({
-                        "candidates": [{"content": {"parts": [{
-                            "text": '[{"name":"Example","store_index":1}]'
-                        }]}}]
-                    }).encode()
-                return 200, body, {}
-
-        http = FakeHttp()
-        article = parse_article(
-            b'<html><body><a href="https://store.steampowered.com/app/1/">Example</a></body></html>',
-            "https://example.com/article", "Example",
-        )
-        with patch("free_game.ai.time.sleep"):
-            games = GeminiExtractor(http, "key", "gemini-test").extract(article)
-        self.assertEqual(http.calls, 2)
-        self.assertEqual(games[0].name, "Example")
-
-    def test_gemini_missing_candidates_retries_then_reports_response_keys(self):
-        from free_game.ai import GeminiExtractor
-
-        class FakeHttp:
-            calls = 0
-
-            def post_json(self, url, payload, **kwargs):
-                self.calls += 1
-                return 200, b'{"unexpected":"value"}', {}
-
-        http = FakeHttp()
-        article = parse_article(
-            b'<html><body><a href="https://store.steampowered.com/app/1/">Example</a></body></html>',
-            "https://example.com/article", "Example",
-        )
-        with patch("free_game.ai.time.sleep"):
-            with self.assertRaisesRegex(
-                RuntimeError, "missing 'candidates'.*unexpected"
-            ):
-                GeminiExtractor(http, "key", "gemini-test").extract(article)
-        self.assertEqual(http.calls, 2)
 
 
 if __name__ == "__main__":
