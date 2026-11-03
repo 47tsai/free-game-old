@@ -238,6 +238,8 @@ def main():
     )
     if auto_notices:
         print(f"[INFO] automatic-claim notifications sent: {auto_notices}")
+    active_games.save()
+    notification_state.save()
 
     data, _ = http.get(RSS_URL)
     rss_articles = parse_rss(data)
