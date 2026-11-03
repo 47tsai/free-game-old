@@ -106,18 +106,18 @@ class RuleBasedExtractor:
     }
 
     STORE_SUFFIX_RE = re.compile(
-        r"\\s*(?:[｜|]|[-（(])\\s*"
-        r"(?:steam(?: 商店)?|epic games store|epic games|gog(?:\\.com)?|"
-        r"ubisoft(?: store)?)\\s*[）)]?\\s*$",
+        r"\s*(?:[｜|]|[-（(])\s*"
+        r"(?:steam(?: 商店)?|epic games store|epic games|gog(?:\.com)?|"
+        r"ubisoft(?: store)?)\s*[）)]?\s*$",
         re.IGNORECASE,
     )
 
     def _clean_name(self, value):
-        name = re.sub(r"\\s+", " ", str(value or "")).strip()
-        name = re.sub(r"^[\\s⏩👉➡️🔗🎮：:]+", "", name)
-        name = self.STORE_SUFFIX_RE.sub("", name).strip(" \\t-｜|：:，,。")
-        name = re.sub(r"^(?:立即領取|前往商店|商店連結|點此前往|點此領取)\\s*[:：｜|]*", "", name)
-        name = name.strip(" \\t-｜|：:，,。")
+        name = re.sub(r"\s+", " ", str(value or "")).strip()
+        name = re.sub(r"^[\s⏩👉➡️🔗🎮：:]+", "", name)
+        name = self.STORE_SUFFIX_RE.sub("", name).strip(" \t-｜|：:，,。")
+        name = re.sub(r"^(?:立即領取|前往商店|商店連結|點此前往|點此領取)\s*[:：｜|]*", "", name)
+        name = name.strip(" \t-｜|：:，,。")
         if not name or name.casefold() in self.GENERIC_LABELS:
             return ""
         if len(name) > 200:
@@ -139,7 +139,7 @@ class RuleBasedExtractor:
         # DLsite links are deliberately excluded from automated extraction.
         result = []
         seen = set()
-        for index, store_link in enumerate(article.store_links):
+        for store_link in article.store_links:
             host = urlparse(store_link.url).hostname or ""
             if host == "dlsite.com" or host.endswith(".dlsite.com"):
                 continue
