@@ -149,64 +149,63 @@ def process_article(
                 active_games.upsert(game, article.title, article.url, claim_status)
 
             # Expired campaigns may still appear in RSS or a backfill entry.
-            # Do not announce them, even though they are safe to mark processed.
+            # Mark them processed without sending a stale Discord notification.
             deadline_at = _parse_deadline(game.deadline)
-            campaign_expired = (
-                deadline_at is not None and deadline_at <= datetime.now(timezone.utc)
-            )
-            if campaign_expired:
+            if deadline_at is not None and deadline_at <= datetime.now(timezone.utc):
                 print(
                     f"[INFO] {item.url} | {game.name}: campaign expired; "
                     "skipping Discord notification"
                 )
-            else:
-                # Existing game/article state still prevents duplicate notifications.
-                if state.is_game_processed(processed, item.url, game):
-                    continue
+                processed.add(key)
+                continue
 
-                try:
-                    if notification_state is None:
-                        discord.send(game, article.title, article.url)
-                    else:
-                        event_id = _event_id(game)
-                        notification = notification_state.get(event_id)
-                        if (
-                            not notification.get("notified_at")
-                            and not notification.get("auto_notified_at")
-                            and not notification.get("initial_uncertain")
-                            and not notification.get("completed_at")
-                            and notification.get("claim_method") != "manual"
-                        ):
-                            if is_auto_claimed(claim_status):
-                                discord.send_status(game, "已自動領取", article_url=article.url)
-                                notification_state.update(
-                                    event_id,
-                                    auto_notified_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                                    completed_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                                    claim_method="auto",
-                                )
-                            elif is_success(claim_status):
-                                # Already owned is complete, but it was not claimed by FGC.
-                                notification_state.update(
-                                    event_id,
-                                    completed_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                                    claim_method="owned",
-                                )
-                            else:
-                                discord.send_status(game, "尚未領取", article_url=article.url)
-                                notification_state.update(
-                                    event_id,
-                                    notified_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                                )
-                except AmbiguousDeliveryError as exc:
-                    if notification_state is not None:
-                        notification_state.update(_event_id(game), initial_uncertain=True)
-                    processed.add(state.uncertain_game_key(game))
-                    print(
-                        f"[WARN] {item.url} | {game.name}: delivery outcome unknown; "
-                        f"recorded for manual review and will not auto-retry ({exc})"
-                    )
-                    continue
+            # Existing game/article state still prevents duplicate notifications.
+            if state.is_game_processed(processed, item.url, game):
+                continue
+
+            try:
+                if notification_state is None:
+                    discord.send(game, article.title, article.url)
+                else:
+                    event_id = _event_id(game)
+                    notification = notification_state.get(event_id)
+                    if (
+                        not notification.get("notified_at")
+                        and not notification.get("auto_notified_at")
+                        and not notification.get("initial_uncertain")
+                        and not notification.get("completed_at")
+                        and notification.get("claim_method") != "manual"
+                    ):
+                        if is_auto_claimed(claim_status):
+                            discord.send_status(game, "已自動領取", article_url=article.url)
+                            notification_state.update(
+                                event_id,
+                                auto_notified_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                                completed_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                                claim_method="auto",
+                            )
+                        elif is_success(claim_status):
+                            # Already owned is complete, but it was not claimed by FGC.
+                            notification_state.update(
+                                event_id,
+                                completed_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                                claim_method="owned",
+                            )
+                        else:
+                            discord.send_status(game, "尚未領取", article_url=article.url)
+                            notification_state.update(
+                                event_id,
+                                notified_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                            )
+            except AmbiguousDeliveryError as exc:
+                if notification_state is not None:
+                    notification_state.update(_event_id(game), initial_uncertain=True)
+                processed.add(state.uncertain_game_key(game))
+                print(
+                    f"[WARN] {item.url} | {game.name}: delivery outcome unknown; "
+                    f"recorded for manual review and will not auto-retry ({exc})"
+                )
+                continue
             processed.add(key)
         except Exception as exc:
             article_failed = True
