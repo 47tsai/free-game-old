@@ -71,8 +71,8 @@ class DiscordSender:
             include_buttons = status == "尚未領取"
         colors = {"尚未領取": 0xFEE75C, "已自動領取": 0x57F287, "領取提醒": 0xFEE75C}
         embed = {
-            "title": str(game.name or "未命名遊戲")[:256],
-            "description": f"**狀態**　{status}\n**平台**　{str(game.platform or '未知')[:100]}",
+            "title": status[:256],
+            "description": f"**遊戲**　{str(game.name or '未命名遊戲')[:200]}\n**平台**　{str(game.platform or '未知')[:100]}",
             "color": colors.get(status, 0x5865F2),
             "footer": {"text": "Free Game Notifier"},
             "timestamp": datetime.now(timezone.utc).isoformat(),
