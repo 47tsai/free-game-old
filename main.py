@@ -4,10 +4,8 @@ import json
 from free_game.ai import RuleBasedExtractor
 from free_game.article import parse_article
 from free_game.config import (
-    GEMINI_API_KEY,
     MANUAL_CLAIMS_URL,
     NOTIFICATION_STATE_FILE,
-    GEMINI_MODEL,
     NTFY_URL,
     CLAIMS_FILE,
     NTFY_CURSOR_FILE,
