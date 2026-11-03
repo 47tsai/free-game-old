@@ -107,9 +107,14 @@ class NotificationStateTests(unittest.TestCase):
             )
             self.assertEqual(state.get(event_id)["claim_method"], "auto")
             self.assertEqual(send_due_reminders(active, state, {}, FakeDiscord(), self.now), 0)
+
+            # The next article refresh may persist the successful claim status
+            # before the failed Discord notification gets another chance.
+            active.records[event_id]["claim_status"] = "已領取"
             discord = FakeDiscord()
             self.assertEqual(sync_auto_claim_notifications(active, Claims(), state, discord, self.now), 1)
             self.assertEqual([item[1] for item in discord.sent], ["已自動領取"])
+            self.assertEqual(sync_auto_claim_notifications(active, Claims(), state, FakeDiscord(), self.now), 0)
 
     def test_auto_claim_notification_is_sent_once(self):
         with tempfile.TemporaryDirectory() as directory:
