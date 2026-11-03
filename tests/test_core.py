@@ -737,7 +737,7 @@ class RuleBasedExtractorTests(unittest.TestCase):
 
         article = parse_article(
             b'<html><body><a href="https://store.epicgames.com/p/example">'
-            b'Epic World - Hunt For Quest｜Epic Games Store</a></body></html>',
+            'Epic World - Hunt For Quest｜Epic Games Store</a></body></html>'.encode("utf-8"),
             "https://www.4gamers.com.tw/article/x",
             "EGS限免：《Epic World - Hunt For Quest》限時免費領",
         )
