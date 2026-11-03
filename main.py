@@ -201,13 +201,7 @@ def process_article(
 
 
 def log_article_error(item, exc):
-    """Return True when an article error is a known non-fatal Gemini safety block."""
-    if isinstance(exc, GeminiPromptBlockedError):
-        print(
-            f"[WARN] {item.url}: skipped because Gemini blocked the prompt "
-            f"({exc.reason}); article remains unprocessed for a later retry"
-        )
-        return True
+    """Log an article processing failure."""
     print(f"[ERROR] {item.url}: {exc}")
     return False
 
