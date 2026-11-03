@@ -122,11 +122,17 @@ def sync_auto_claim_notifications(active_games, claims, notification_state, disc
             discord.send_status(game, "已自動領取", article_url=item.get("article_url", ""))
         except AmbiguousDeliveryError as exc:
             item["claim_status"] = status
-            notification_state.update(event_id, auto_uncertain=True)
+            notification_state.update(
+                event_id, auto_uncertain=True, completed_at=_iso(now), claim_method="auto"
+            )
             print(f"[WARN] auto-claim notification outcome unknown for {game.name}: {exc}")
             continue
         except Exception as exc:
-            # Keep the previous claim_status so the transition is retried next run.
+            # Mark the game complete to suppress reminders, but keep the transition
+            # pending so the success embed can be retried on the next run.
+            notification_state.update(
+                event_id, completed_at=_iso(now), claim_method="auto"
+            )
             print(f"[WARN] auto-claim notification failed for {game.name}: {exc}")
             continue
 
