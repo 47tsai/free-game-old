@@ -91,162 +91,78 @@ def platform_from_url(url):
     return ""
 
 
-class GeminiPromptBlockedError(RuntimeError):
-    """A Gemini safety block that should skip only the current article."""
+class RuleBasedExtractor:
+    """Conservatively identify games from existing store-link text and article titles.
 
-    def __init__(self, reason):
-        self.reason = str(reason)
-        super().__init__(f"Gemini blocked the prompt: {self.reason}")
+    This extractor intentionally avoids guessing: a store link is accepted only
+    when its anchor text names a game, or when a single unambiguous game title
+    appears in the article headline.
+    """
 
+    GENERIC_LABELS = {
+        "steam", "steam 商店", "epic games store", "epic games",
+        "gog", "gog.com", "ubisoft", "ubisoft store",
+        "立即領取", "前往商店", "商店連結", "點此前往", "點此領取",
+    }
 
-class GeminiExtractor:
-    def __init__(self, http, api_key, model):
-        self.http, self.api_key, self.model = http, api_key, model
+    STORE_SUFFIX_RE = re.compile(
+        r"\s*(?:[｜|]|[-（(])\s*"
+        r"(?:steam(?: 商店)?|epic games store|epic games|gog(?:\.com)?|"
+        r"ubisoft(?: store)?)\s*[）)]?\s*$",
+        re.IGNORECASE,
+    )
 
-    def _generate_text(self, url, payload):
-        """Call Gemini and distinguish API errors, safety blocks, and bad envelopes."""
-        last_error = None
-        for attempt in range(2):
-            _, body, _ = self.http.post_json(
-                url, payload, timeout=45, headers={"x-goog-api-key": self.api_key}
-            )
-            try:
-                response = json.loads(body)
-            except (TypeError, json.JSONDecodeError) as exc:
-                last_error = RuntimeError(f"Gemini returned non-JSON API response: {exc}")
-            else:
-                if not isinstance(response, dict):
-                    raise RuntimeError(
-                        f"Gemini returned an unexpected response type: {type(response).__name__}"
-                    )
+    def _clean_name(self, value):
+        name = re.sub(r"\s+", " ", str(value or "")).strip()
+        name = re.sub(r"^[\s⏩👉➡️🔗🎮：:]+", "", name)
+        name = self.STORE_SUFFIX_RE.sub("", name).strip(" \t-｜|：:，,。")
+        name = re.sub(r"^(?:立即領取|前往商店|商店連結|點此前往|點此領取)\s*[:：｜|]*", "", name)
+        name = name.strip(" \t-｜|：:，,。")
+        if not name or name.casefold() in self.GENERIC_LABELS:
+            return ""
+        if len(name) > 200:
+            return ""
+        return name
 
-                api_error = response.get("error")
-                if isinstance(api_error, dict):
-                    status = api_error.get("status", "unknown status")
-                    message = api_error.get("message", "no message provided")
-                    code = api_error.get("code", "unknown code")
-                    detail = f"Gemini API error {code} ({status}): {message}"
-                    if code in (429, 500, 502, 503, 504) and attempt == 0:
-                        last_error = RuntimeError(detail)
-                        time.sleep(1)
-                        continue
-                    raise RuntimeError(detail)
-
-                prompt_feedback = response.get("promptFeedback")
-                if isinstance(prompt_feedback, dict) and prompt_feedback.get("blockReason"):
-                    reason = prompt_feedback["blockReason"]
-                    raise GeminiPromptBlockedError(reason)
-
-                candidates = response.get("candidates")
-                if isinstance(candidates, list) and candidates:
-                    candidate = candidates[0]
-                    if not isinstance(candidate, dict):
-                        raise RuntimeError("Gemini returned a malformed candidate")
-                    finish_reason = candidate.get("finishReason")
-                    content = candidate.get("content")
-                    parts = content.get("parts") if isinstance(content, dict) else None
-                    if isinstance(parts, list):
-                        for part in parts:
-                            if isinstance(part, dict) and isinstance(part.get("text"), str):
-                                return part["text"].strip()
-                    raise RuntimeError(
-                        "Gemini candidate contains no text"
-                        + (f" (finishReason={finish_reason})" if finish_reason else "")
-                    )
-
-                if isinstance(candidates, list) and not candidates:
-                    raise RuntimeError(
-                        "Gemini returned no candidates"
-                        + (
-                            f" (finishReason={response.get('promptFeedback', {}).get('blockReason')})"
-                            if isinstance(response.get("promptFeedback"), dict)
-                            and response["promptFeedback"].get("blockReason")
-                            else ""
-                        )
-                    )
-
-                keys = ", ".join(sorted(str(key) for key in response.keys())) or "(empty)"
-                last_error = RuntimeError(
-                    f"Gemini response is missing 'candidates'; top-level keys: {keys}"
-                )
-
-            if attempt == 0:
-                time.sleep(1)
-
-        raise RuntimeError(f"Gemini response failed after one retry: {last_error}") from last_error
+    @staticmethod
+    def _headline_titles(title):
+        # 4Gamers commonly encloses the formal game title in 《》.
+        matches = re.findall(r"《([^《》]{1,200})》", str(title or ""))
+        if not matches:
+            matches = re.findall(r"「([^「」]{1,200})」", str(title or ""))
+        return list(dict.fromkeys(item.strip() for item in matches if item.strip()))
 
     def extract(self, article):
-        if not self.api_key:
-            raise RuntimeError("GEMINI_API_KEY is not configured")
         if not article.store_links:
             return []
 
-        candidates = [
-            f"[{i}] {item.url} | {item.context}"
-            for i, item in enumerate(article.store_links, 1)
-        ]
-        prompt = (
-            "你是遊戲名稱辨識助手。只根據文章標題、RSS 摘要與內文，找出正在限時免費的遊戲。"
-            "只輸出 JSON 陣列，每個物件只包含 name 與 store_index，不要 Markdown 或其他欄位。"
-            "name 必須是遊戲正式名稱，不要加入平台、價格、期限、介紹或宣傳文案。"
-            "store_index 必須是候選商店連結前面的整數編號，不可自行產生 URL。"
-            "每個候選連結最多配對一款遊戲；若文章有多款遊戲，分別配對最合理的連結。"
-            "無法可靠辨識名稱或配對連結時，省略該遊戲，不可猜測。"
-            f"\\n標題：{article.title}\\nRSS 摘要：{article.summary}\\n文章：{article.text}"
-            f"\\n候選商店連結：{json.dumps(candidates, ensure_ascii=False)}"
-        )
-        url = (
-            "https://generativelanguage.googleapis.com/v1beta/models/"
-            + self.model
-            + ":generateContent"
-        )
-        payload = {
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {
-                "temperature": 0.1,
-                "responseMimeType": "application/json",
-            },
-        }
-        raw = self._generate_text(url, payload)
-
-
-        raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.I)
-        try:
-            data = json.loads(raw)
-        except json.JSONDecodeError as exc:
-            raise RuntimeError("Gemini returned invalid JSON") from exc
-
-        if not isinstance(data, list):
-            raise RuntimeError("Gemini JSON is not a list")
-
+        # DLsite links are deliberately excluded from automated extraction.
         result = []
         seen = set()
-        used_indexes = set()
+        for store_link in article.store_links:
+            host = urlparse(store_link.url).hostname or ""
+            if host == "dlsite.com" or host.endswith(".dlsite.com"):
+                continue
 
-        for item in data:
-            if not isinstance(item, dict):
+            name = self._clean_name(store_link.context)
+            if not name and len(article.store_links) == 1:
+                titles = self._headline_titles(article.title)
+                if len(titles) == 1:
+                    name = self._clean_name(titles[0])
+
+            if not name:
                 continue
-            name = str(item.get("name", "")).strip()
-            index = item.get("store_index")
-            if isinstance(index, bool) or not isinstance(index, int):
-                continue
-            if not name or not 1 <= index <= len(article.store_links):
-                continue
-            if index in used_indexes:
-                continue
-            link = article.store_links[index - 1].url
-            key = (name.casefold(), link)
+
+            key = (name.casefold(), store_link.url)
             if key in seen:
                 continue
             seen.add(key)
-            used_indexes.add(index)
             result.append(
                 Game(
-                    name=name[:200],
-                    platform=platform_from_url(link) or str(item.get("platform", "")).strip()[:100],
-                    link=link,
+                    name=name,
+                    platform=platform_from_url(store_link.url),
+                    link=store_link.url,
                     image=article.image,
                 )
             )
-
         return result

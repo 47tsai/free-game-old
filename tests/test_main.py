@@ -5,7 +5,6 @@ import tempfile
 import unittest
 
 os.environ.setdefault("DISCORD_WEBHOOK_URL", "https://discord.example/webhook")
-os.environ.setdefault("GEMINI_API_KEY", "test-key")
 
 from free_game.models import Article, Game
 from free_game.active import ActiveGameStore, _event_id
