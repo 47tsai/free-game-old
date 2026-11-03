@@ -525,6 +525,11 @@ class AITests(unittest.TestCase):
         self.assertEqual(games[0].original_price, "")
         self.assertEqual(games[0].deadline, "")
 
+        self.assertEqual(games[0].genre, "")
+        self.assertEqual(games[0].gameplay, "")
+        self.assertEqual(games[0].rating, "")
+        self.assertEqual(games[0].brief, "")
+
     def test_invalid_store_link_is_rejected(self):
         from free_game.ai import GeminiExtractor
 
