@@ -467,6 +467,21 @@ class DiscordTests(unittest.TestCase):
 
 
 class AITests(unittest.TestCase):
+    def test_deadline_normalizes_midnight_and_noon_periods(self):
+        from free_game.ai import extract_deadline
+
+        cases = {
+            "期限至2026年11月3日上午12點": "2026-11-03T00:00:00+08:00",
+            "期限至2026年11月3日早上12點": "2026-11-03T00:00:00+08:00",
+            "期限至2026年11月3日凌晨12點": "2026-11-03T00:00:00+08:00",
+            "期限至2026年11月3日中午12點": "2026-11-03T12:00:00+08:00",
+            "期限至2026年11月3日下午12點": "2026-11-03T12:00:00+08:00",
+            "期限至2026年11月3日晚上12點": "2026-11-04T00:00:00+08:00",
+        }
+        for source, expected in cases.items():
+            with self.subTest(source=source):
+                self.assertEqual(extract_deadline(source), expected)
+
     def test_markdown_json_fence_is_removed(self):
         from free_game.ai import GeminiExtractor
 
