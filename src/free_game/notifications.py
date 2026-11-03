@@ -91,7 +91,7 @@ def sync_auto_claim_notifications(active_games, claims, notification_state, disc
         status = claims.get_status(Game(name=item.get("name", ""), platform=item.get("platform", "")))
         item["claim_status"] = status
         record = notification_state.get(event_id)
-        if not is_success(status) or record.get("auto_notified_at") or record.get("auto_uncertain"):
+        if not is_success(status) or record.get("claim_method") == "manual" or record.get("auto_notified_at") or record.get("auto_uncertain"):
             continue
         game = Game(name=item.get("name", ""), platform=item.get("platform", ""), link=item.get("link", ""))
         try:
