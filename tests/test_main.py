@@ -217,11 +217,11 @@ class MainFlowTests(unittest.TestCase):
             self.assertTrue(success)
             self.assertIn(state.article_key(self.article.url), processed)
 
-    def _run_notification_flow(self, claim_status="尚無回報", existing_state=None):
+    def _run_notification_flow(self, claim_status="尚無回報", existing_state=None, deadline="2026-11-10T12:00:00+08:00"):
         game = Game(
             name="Notification Example",
             platform="GOG",
-            deadline="2026-11-10T12:00:00+08:00",
+            deadline=deadline,
             link="https://www.gog.com/game/notification-example",
         )
 
@@ -277,6 +277,14 @@ class MainFlowTests(unittest.TestCase):
             return success, discord.sent, notifications, event_id, game, process_article, (
                 FakeHttp(), state, FakeAI(), FakeSteam(), FakeClaims(), active, processed
             )
+
+    def test_expired_campaign_is_not_announced_or_recorded(self):
+        success, sent, notifications, event_id, game, *_ = self._run_notification_flow(
+            deadline="2026-11-02T12:00:00+08:00"
+        )
+        self.assertTrue(success)
+        self.assertEqual(sent, [])
+        self.assertNotIn(event_id, notifications.records)
 
     def test_initial_pending_notification_records_first_notice_time(self):
         success, sent, notifications, event_id, *_ = self._run_notification_flow()
