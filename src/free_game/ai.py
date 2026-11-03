@@ -186,12 +186,14 @@ class GeminiExtractor:
             for i, item in enumerate(article.store_links, 1)
         ]
         prompt = (
-            "你是遊戲資訊結構化助手。只根據文章內容判斷哪些遊戲正在限時免費。"
-            "輸出 JSON 陣列，不要 Markdown。欄位為 name, platform, original_price, deadline, genre, gameplay, rating, brief, store_index。original_price 是本次免費活動開始前的原價，只能使用文章明確提供的價格，保留原幣別與格式（例如 $52、NT$ 300）；不可把「免費」或折扣後的 $0 當成原價，文章沒有提供就輸出空字串。deadline 請輸出 ISO 8601 日期時間並使用台灣時區 +08:00，例如 2026-11-03T00:00:00+08:00；若文章未提供具體時間，不可自行猜測，輸出原文或空字串。rating 只能引用文章明確寫出的玩家評價或好評率，文章未提供就輸出空字串，絕不可推測。genre 請使用精簡且明確的遊戲類型；gameplay 說明主要操作、目標與核心機制；brief 是給 Discord 通知直接顯示的完整遊戲介紹，請用自然的繁體中文寫 1 至 2 句、約 40 至 80 個中文字，交代玩家要做什麼及最具辨識度的玩法特色，避免空泛形容、重複標題或只寫宣傳口號。所有描述只能依據標題、RSS 摘要與文章內文，不確定的細節不要補寫。"
-            "store_index 必須是候選商店連結前面的整數編號，不可自行產生 URL。每個候選連結最多配對一款遊戲；"
-            "若文章有多個遊戲，分別配對最合理的候選連結。若無法可靠配對，省略該遊戲。"
-            f"\n標題：{article.title}\nRSS 摘要：{article.summary}\n文章：{article.text}"
-            f"\n候選商店連結：{json.dumps(candidates, ensure_ascii=False)}"
+            "你是遊戲名稱辨識助手。只根據文章標題、RSS 摘要與內文，找出正在限時免費的遊戲。"
+            "只輸出 JSON 陣列，每個物件只包含 name 與 store_index，不要 Markdown 或其他欄位。"
+            "name 必須是遊戲正式名稱，不要加入平台、價格、期限、介紹或宣傳文案。"
+            "store_index 必須是候選商店連結前面的整數編號，不可自行產生 URL。"
+            "每個候選連結最多配對一款遊戲；若文章有多款遊戲，分別配對最合理的連結。"
+            "無法可靠辨識名稱或配對連結時，省略該遊戲，不可猜測。"
+            f"\\n標題：{article.title}\\nRSS 摘要：{article.summary}\\n文章：{article.text}"
+            f"\\n候選商店連結：{json.dumps(candidates, ensure_ascii=False)}"
         )
         url = (
             "https://generativelanguage.googleapis.com/v1beta/models/"
@@ -216,10 +218,6 @@ class GeminiExtractor:
 
         if not isinstance(data, list):
             raise RuntimeError("Gemini JSON is not a list")
-
-        source_price = extract_original_price(article.text)
-        source_deadline = extract_deadline(article.text)
-        source_rating = extract_explicit_rating(article.text)
 
         result = []
         seen = set()
@@ -246,15 +244,6 @@ class GeminiExtractor:
                 Game(
                     name=name[:200],
                     platform=platform_from_url(link) or str(item.get("platform", "")).strip()[:100],
-                    # Never trust model-generated prices or deadlines. Only
-                    # use values explicitly parsed from the article; official
-                    # store metadata can fill gaps later in process_article.
-                    deadline=source_deadline[:200],
-                    original_price=source_price[:100],
-                    genre=str(item.get("genre", "")).strip()[:200],
-                    gameplay=str(item.get("gameplay", "")).strip()[:1000],
-                    rating=source_rating,
-                    brief=str(item.get("brief", "")).strip()[:1000],
                     link=link,
                     image=article.image,
                 )
