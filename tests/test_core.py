@@ -546,5 +546,108 @@ class AITests(unittest.TestCase):
             [],
         )
 
+
+    def test_gemini_api_error_includes_status_and_message(self):
+        from free_game.ai import GeminiExtractor
+
+        class FakeHttp:
+            def post_json(self, url, payload, **kwargs):
+                body = json.dumps({
+                    "error": {
+                        "code": 400,
+                        "status": "INVALID_ARGUMENT",
+                        "message": "Invalid API key format",
+                    }
+                }).encode()
+                return 200, body, {}
+
+        article = parse_article(
+            b'<html><body><a href="https://store.steampowered.com/app/1/">Example</a></body></html>',
+            "https://example.com/article", "Example",
+        )
+        with self.assertRaisesRegex(
+            RuntimeError, "Gemini API error 400 .*Invalid API key format"
+        ):
+            GeminiExtractor(FakeHttp(), "key", "gemini-test").extract(article)
+
+    def test_gemini_prompt_block_is_reported_without_retry(self):
+        from free_game.ai import GeminiExtractor
+
+        class FakeHttp:
+            calls = 0
+
+            def post_json(self, url, payload, **kwargs):
+                self.calls += 1
+                body = json.dumps({
+                    "promptFeedback": {"blockReason": "SAFETY"}
+                }).encode()
+                return 200, body, {}
+
+        http = FakeHttp()
+        article = parse_article(
+            b'<html><body><a href="https://store.steampowered.com/app/1/">Example</a></body></html>',
+            "https://example.com/article", "Example",
+        )
+        with self.assertRaisesRegex(RuntimeError, "blocked the prompt: SAFETY"):
+            GeminiExtractor(http, "key", "gemini-test").extract(article)
+        self.assertEqual(http.calls, 1)
+
+    def test_gemini_transient_api_error_retries_once(self):
+        from free_game.ai import GeminiExtractor
+
+        class FakeHttp:
+            calls = 0
+
+            def post_json(self, url, payload, **kwargs):
+                self.calls += 1
+                if self.calls == 1:
+                    body = json.dumps({
+                        "error": {
+                            "code": 503,
+                            "status": "UNAVAILABLE",
+                            "message": "Temporary outage",
+                        }
+                    }).encode()
+                else:
+                    body = json.dumps({
+                        "candidates": [{"content": {"parts": [{
+                            "text": '[{"name":"Example","store_index":1}]'
+                        }]}}]
+                    }).encode()
+                return 200, body, {}
+
+        http = FakeHttp()
+        article = parse_article(
+            b'<html><body><a href="https://store.steampowered.com/app/1/">Example</a></body></html>',
+            "https://example.com/article", "Example",
+        )
+        with patch("free_game.ai.time.sleep"):
+            games = GeminiExtractor(http, "key", "gemini-test").extract(article)
+        self.assertEqual(http.calls, 2)
+        self.assertEqual(games[0].name, "Example")
+
+    def test_gemini_missing_candidates_retries_then_reports_response_keys(self):
+        from free_game.ai import GeminiExtractor
+
+        class FakeHttp:
+            calls = 0
+
+            def post_json(self, url, payload, **kwargs):
+                self.calls += 1
+                return 200, b'{"unexpected":"value"}', {}
+
+        http = FakeHttp()
+        article = parse_article(
+            b'<html><body><a href="https://store.steampowered.com/app/1/">Example</a></body></html>',
+            "https://example.com/article", "Example",
+        )
+        with patch("free_game.ai.time.sleep"):
+            with self.assertRaisesRegex(
+                RuntimeError, "missing 'candidates'.*unexpected"
+            ):
+                GeminiExtractor(http, "key", "gemini-test").extract(article)
+        self.assertEqual(http.calls, 2)
+
+
 if __name__ == "__main__":
     unittest.main()
