@@ -30,6 +30,8 @@ def extract_original_price(text):
     if currency in ("US$", "USD$", "USD") or suffix in ("USD", "美元"):
         return "US$" + amount
     return "$" + amount
+
+
 def extract_deadline(text):
     pattern = (
         r"(?:期限至|期限為|免費至|限免至|截止至|領取期限(?:至|為)?)"
@@ -80,6 +82,8 @@ def platform_from_url(url):
         return "GOG"
     if host in {"store.ubi.com", "store.ubisoft.com"}:
         return "Ubisoft"
+    if host == "dlsite.com" or host.endswith(".dlsite.com"):
+        return "DLsite"
     return ""
 
 
