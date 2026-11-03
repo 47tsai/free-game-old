@@ -398,8 +398,8 @@ class DiscordTests(unittest.TestCase):
         )
 
         embed = self._send(game).payload["embeds"][0]
-        self.assertEqual(embed["title"], "Example")
-        self.assertIn("尚未領取", embed["description"])
+        self.assertEqual(embed["title"], "尚未領取")
+        self.assertIn("Example", embed["description"])
         self.assertIn("Steam", embed["description"])
         self.assertNotIn("原價", embed["description"])
         self.assertNotIn("期限", embed["description"])
