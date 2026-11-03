@@ -98,13 +98,23 @@ def sync_auto_claim_notifications(active_games, claims, notification_state, disc
         if not is_success(status):
             item["claim_status"] = status
             continue
+        retry_auto_notice = (
+            record.get("claim_method") == "auto"
+            and record.get("completed_at")
+            and not record.get("auto_notified_at")
+            and not record.get("auto_uncertain")
+        )
         if is_success(previous_status):
             item["claim_status"] = status
             if record.get("notified_at") and not record.get("completed_at"):
                 notification_state.update(
                     event_id, completed_at=_iso(now), claim_method="auto"
                 )
-            continue
+                continue
+            # A previous send may have failed after the claim status was saved.
+            # Retry only known failures; ambiguous deliveries remain suppressed.
+            if not retry_auto_notice:
+                continue
         if (
             record.get("claim_method") == "manual"
             or record.get("auto_notified_at")
