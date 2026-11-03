@@ -55,7 +55,12 @@ class ArticleMetadataTests(unittest.TestCase):
         )
 
     def test_dlsite_article_link_is_extracted(self):
-        html = b'<html><body><a href="https://www.dlsite.com/maniax/work/=/product_id/RJ123456.html">DLsite</a></body></html>'
+        html = b"""
+        <html><body>
+        <a href="https://www.dlsite.com/maniax/work/=/product_id/RJ123456.html">DLsite</a>
+        <a href="https://www.dlsite.com.example.org/work/=/product_id/RJ999999.html">Fake DLsite</a>
+        </body></html>
+        """
         article = parse_article(
             html, "https://www.4gamers.com.tw/article/x", "Example"
         )
