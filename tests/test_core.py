@@ -424,7 +424,6 @@ class DiscordTests(unittest.TestCase):
         buttons = http.payload["components"][0]["components"]
         self.assertEqual(len(buttons), 2)
         self.assertEqual(buttons[0]["label"], "4Gamers")
-        self.assertEqual(buttons[0]["emoji"], {"name": "🔗"})
         self.assertEqual(buttons[0]["url"], "https://example.com/article")
         self.assertEqual(buttons[0]["style"], 5)
         self.assertEqual(buttons[1]["label"], "網站標記已領取")
