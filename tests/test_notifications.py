@@ -116,6 +116,50 @@ class NotificationStateTests(unittest.TestCase):
             self.assertEqual([item[1] for item in discord.sent], ["已自動領取"])
             self.assertEqual(sync_auto_claim_notifications(active, Claims(), state, FakeDiscord(), self.now), 0)
 
+    def test_auto_claim_notice_is_sent_when_status_was_refreshed_first(self):
+        with tempfile.TemporaryDirectory() as directory:
+            active, state, event_id = self.make_store(directory)
+            state.update(event_id, notified_at="2026-11-02T12:00:00+00:00")
+            # Simulate article refresh persisting FGC's success before sync.
+            active.records[event_id]["claim_status"] = "已領取"
+
+            class Claims:
+                def get_status(self, game):
+                    return "已領取"
+
+            discord = FakeDiscord()
+            self.assertEqual(sync_auto_claim_notifications(active, Claims(), state, discord, self.now), 1)
+            self.assertEqual([item[1] for item in discord.sent], ["已自動領取"])
+            record = state.get(event_id)
+            self.assertEqual(record["claim_method"], "auto")
+            self.assertEqual(record["completed_at"], "2026-11-03T12:00:00+00:00")
+            self.assertEqual(record["auto_notified_at"], "2026-11-03T12:00:00+00:00")
+            self.assertEqual(send_due_reminders(active, state, {}, FakeDiscord(), self.now), 0)
+
+            self.assertEqual(sync_auto_claim_notifications(active, Claims(), state, FakeDiscord(), self.now), 0)
+
+    def test_manual_or_ambiguous_auto_notice_remains_suppressed_after_refresh(self):
+        with tempfile.TemporaryDirectory() as directory:
+            active, state, event_id = self.make_store(directory)
+            active.records[event_id]["claim_status"] = "已領取"
+
+            class Claims:
+                def get_status(self, game):
+                    return "已領取"
+
+            state.update(
+                event_id, notified_at="2026-11-02T12:00:00+00:00",
+                completed_at="2026-11-03T11:00:00+00:00", claim_method="manual",
+            )
+            discord = FakeDiscord()
+            self.assertEqual(sync_auto_claim_notifications(active, Claims(), state, discord, self.now), 0)
+            self.assertEqual(discord.sent, [])
+
+            state.update(event_id, completed_at="2026-11-03T11:00:00+00:00",
+                         claim_method="auto", auto_uncertain=True)
+            self.assertEqual(sync_auto_claim_notifications(active, Claims(), state, discord, self.now), 0)
+            self.assertEqual(discord.sent, [])
+
     def test_auto_claim_notification_is_sent_once(self):
         with tempfile.TemporaryDirectory() as directory:
             active, state, event_id = self.make_store(directory)
