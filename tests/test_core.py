@@ -496,7 +496,7 @@ class RuleBasedExtractorTests(unittest.TestCase):
         from free_game.ai import RuleBasedExtractor
 
         article = parse_article(
-            b'<html><body><a href="https://store.steampowered.com/app/123/">立即領取</a></body></html>',
+            '<html><body><a href="https://store.steampowered.com/app/123/">立即領取</a></body></html>'.encode("utf-8"),
             "https://example.com/article",
             "限免：《Example Game》與《Another Game》",
         )
@@ -506,7 +506,7 @@ class RuleBasedExtractorTests(unittest.TestCase):
         from free_game.ai import RuleBasedExtractor
 
         article = parse_article(
-            b'<html><body><a href="https://store.steampowered.com/app/123/">立即領取</a></body></html>',
+            '<html><body><a href="https://store.steampowered.com/app/123/">立即領取</a></body></html>'.encode("utf-8"),
             "https://example.com/article",
             "Steam 限免活動",
         )
@@ -750,7 +750,7 @@ class RuleBasedExtractorTests(unittest.TestCase):
         from free_game.ai import RuleBasedExtractor
 
         article = parse_article(
-            b'<html><body><a href="https://store.steampowered.com/app/123/">立即領取</a></body></html>',
+            '<html><body><a href="https://store.steampowered.com/app/123/">立即領取</a></body></html>'.encode("utf-8"),
             "https://example.com/article",
             "Steam 限免：《Example Game》限時免費",
         )
@@ -761,7 +761,7 @@ class RuleBasedExtractorTests(unittest.TestCase):
         from free_game.ai import RuleBasedExtractor
 
         article = parse_article(
-            b'<html><body><a href="https://store.steampowered.com/app/123/">立即領取</a></body></html>',
+            '<html><body><a href="https://store.steampowered.com/app/123/">立即領取</a></body></html>'.encode("utf-8"),
             "https://example.com/article",
             "限免：《Example Game》與《Another Game》",
         )
@@ -771,7 +771,7 @@ class RuleBasedExtractorTests(unittest.TestCase):
         from free_game.ai import RuleBasedExtractor
 
         article = parse_article(
-            b'<html><body><a href="https://store.steampowered.com/app/123/">立即領取</a></body></html>',
+            '<html><body><a href="https://store.steampowered.com/app/123/">立即領取</a></body></html>'.encode("utf-8"),
             "https://example.com/article",
             "Steam 限免活動",
         )
