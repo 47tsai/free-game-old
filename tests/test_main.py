@@ -77,6 +77,53 @@ class MainFlowTests(unittest.TestCase):
             )
             self.assertIn(state.article_key(article.url), processed)
 
+    def test_stale_claim_status_defers_notification_and_article_processing(self):
+        class FakeHttp:
+            def get(self, url):
+                return b"<html><body>Example</body></html>", {}
+
+        class FakeAI:
+            def extract(self, article):
+                return [Game(
+                    name="Deferred",
+                    platform="Steam",
+                    deadline="2026-11-10T12:00:00+08:00",
+                    link="https://store.steampowered.com/app/99/",
+                )]
+
+        class FakeSteam:
+            def resolve(self, name, link):
+                return ""
+
+        class FakeDiscord:
+            def __init__(self):
+                self.sent = []
+
+            def send_status(self, game, status, **kwargs):
+                self.sent.append(status)
+
+        with tempfile.TemporaryDirectory() as d:
+            state = StateStore(d + "/state.json", 100)
+            processed = state.load()
+            active = ActiveGameStore(d + "/active.json")
+            notifications = NotificationStateStore(d + "/notifications.json")
+            notifications.load()
+            discord = FakeDiscord()
+            success = process_article(
+                self.article, FakeHttp(), state, FakeAI(), discord, FakeSteam(),
+                processed, claims=None, active_games=active,
+                notification_state=notifications, allow_claim_notifications=False,
+            )
+            self.assertTrue(success)
+            self.assertEqual(discord.sent, [])
+            self.assertEqual(len(active.records), 1)
+            self.assertNotIn(state.article_key(self.article.url), processed)
+            self.assertNotIn(state.game_key(Game(
+                name="Deferred", platform="Steam",
+                link="https://store.steampowered.com/app/99/",
+            )), processed)
+
+
     def test_empty_extraction_does_not_mark_article_processed(self):
         class FakeHttp:
             def get(self, url):

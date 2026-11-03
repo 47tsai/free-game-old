@@ -68,6 +68,7 @@ def select_articles(
 def process_article(
     item, http, state, ai, discord, steam, processed,
     epic=None, claims=None, active_games=None, notification_state=None,
+    allow_claim_notifications=True,
 ):
     html, _ = http.get(item.url)
     article = parse_article(html, item.url, item.title, item.summary, item.published)
@@ -97,6 +98,7 @@ def process_article(
         return True
 
     article_failed = False
+    deferred_notification = False
     seen_games = set()
 
     for game in games:
@@ -152,6 +154,13 @@ def process_article(
             if state.is_game_processed(processed, item.url, game):
                 continue
 
+            # Do not make a notification decision from stale FGC data. Leave
+            # this article unprocessed so the notification can be retried after
+            # the next successful ntfy synchronization.
+            if notification_state is not None and not allow_claim_notifications:
+                deferred_notification = True
+                continue
+
             try:
                 if notification_state is None:
                     discord.send(game, article.title, article.url)
@@ -201,7 +210,7 @@ def process_article(
             seen_games.discard(key)
             print(f"[ERROR] {item.url} | {game.name}: {exc}")
 
-    if not article_failed:
+    if not article_failed and not deferred_notification:
         processed.add(state.article_key(item.url))
     return not article_failed
 
@@ -223,6 +232,7 @@ def main():
     active_games.save()
     cursor = load_cursor(NTFY_CURSOR_FILE)
 
+    claims_sync_ok = True
     if NTFY_URL:
         try:
             events, latest_cursor = poll_ntfy(http, NTFY_URL, cursor)
@@ -234,7 +244,8 @@ def main():
                 f"claim records updated: {updated}"
             )
         except Exception as exc:
-            print(f"[WARN] ntfy polling failed; using saved claim statuses: {exc}")
+            claims_sync_ok = False
+            print(f"[WARN] ntfy polling failed; claim-dependent notifications are deferred: {exc}")
 
     claims.save()
     save_cursor(NTFY_CURSOR_FILE, cursor)
@@ -246,13 +257,28 @@ def main():
         manual_claims = None
         print(f"[WARN] manual claim state unavailable; reminders will be skipped: {exc}")
     mark_manual_completions(active_games, notification_state, manual_claims)
-    auto_notices = sync_auto_claim_notifications(
-        active_games, claims, notification_state, discord
-    )
-    if auto_notices:
-        print(f"[INFO] automatic-claim notifications sent: {auto_notices}")
+    if claims_sync_ok:
+        auto_notices = sync_auto_claim_notifications(
+            active_games, claims, notification_state, discord
+        )
+        if auto_notices:
+            print(f"[INFO] automatic-claim notifications sent: {auto_notices}")
+    else:
+        print("[WARN] automatic-claim notifications skipped until ntfy sync recovers")
     active_games.save()
     notification_state.save()
+
+    # Reminders are independent of RSS discovery. Run them before fetching RSS
+    # so a temporary feed outage cannot suppress already-due reminders.
+    if claims_sync_ok:
+        reminders = send_due_reminders(
+            active_games, notification_state, manual_claims, discord
+        )
+        if reminders:
+            print(f"[INFO] 24-hour reminders sent: {reminders}")
+        notification_state.save()
+    else:
+        print("[WARN] reminders skipped because FGC claim status is not confirmed")
 
     data, _ = http.get(RSS_URL)
     rss_articles = parse_rss(data)
@@ -283,13 +309,6 @@ def main():
 
     if failures:
         raise RuntimeError(f"{failures} article(s) failed")
-
-    reminders = send_due_reminders(
-        active_games, notification_state, manual_claims, discord
-    )
-    if reminders:
-        print(f"[INFO] 24-hour reminders sent: {reminders}")
-    notification_state.save()
 
     if rebuild_active_index:
         active_games.bootstrapped = True
