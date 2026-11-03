@@ -84,7 +84,13 @@ def is_manual(claims, event_id):
 
 
 def is_success(status):
+    """Whether the game is already available to the user, regardless of claim source."""
     return status in ("已領取", "已擁有")
+
+
+def is_auto_claimed(status):
+    """Whether FGC successfully claimed the game during this campaign."""
+    return status == "已領取"
 
 
 def sync_auto_claim_notifications(active_games, claims, notification_state, discord, now=None):
@@ -95,7 +101,14 @@ def sync_auto_claim_notifications(active_games, claims, notification_state, disc
         status = claims.get_status(Game(name=item.get("name", ""), platform=item.get("platform", "")))
         record = notification_state.get(event_id)
 
-        if not is_success(status):
+        if status == "已擁有":
+            item["claim_status"] = status
+            if record.get("claim_method") not in ("manual", "auto"):
+                notification_state.update(
+                    event_id, completed_at=_iso(now), claim_method="owned"
+                )
+            continue
+        if not is_auto_claimed(status):
             item["claim_status"] = status
             continue
         retry_auto_notice = (

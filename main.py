@@ -25,7 +25,7 @@ from free_game.rss import is_free_game_article, parse_rss
 from free_game.state import StateStore
 from free_game.notifications import (
     NotificationStateStore, load_manual_claims, mark_manual_completions,
-    sync_auto_claim_notifications, send_due_reminders, is_success,
+    sync_auto_claim_notifications, send_due_reminders, is_success, is_auto_claimed,
 )
 from free_game.stores import EpicPromotionResolver, SteamPriceResolver
 
@@ -165,13 +165,20 @@ def process_article(
                         and not notification.get("completed_at")
                         and notification.get("claim_method") != "manual"
                     ):
-                        if is_success(claim_status):
+                        if is_auto_claimed(claim_status):
                             discord.send_status(game, "已自動領取", article_url=article.url)
                             notification_state.update(
                                 event_id,
                                 auto_notified_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
                                 completed_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
                                 claim_method="auto",
+                            )
+                        elif is_success(claim_status):
+                            # Already owned is complete, but it was not claimed by FGC.
+                            notification_state.update(
+                                event_id,
+                                completed_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                                claim_method="owned",
                             )
                         else:
                             discord.send_status(game, "尚未領取", article_url=article.url)

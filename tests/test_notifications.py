@@ -160,6 +160,27 @@ class NotificationStateTests(unittest.TestCase):
             self.assertEqual(sync_auto_claim_notifications(active, Claims(), state, discord, self.now), 0)
             self.assertEqual(discord.sent, [])
 
+
+    def test_already_owned_is_not_reported_as_auto_claimed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            active, state, event_id = self.make_store(directory)
+
+            class Claims:
+                def get_status(self, game):
+                    return "已擁有"
+
+            discord = FakeDiscord()
+            self.assertEqual(
+                sync_auto_claim_notifications(active, Claims(), state, discord, self.now),
+                0,
+            )
+            self.assertEqual(discord.sent, [])
+            self.assertEqual(active.records[event_id]["claim_status"], "已擁有")
+            self.assertEqual(state.get(event_id)["claim_method"], "owned")
+            self.assertIsNotNone(state.get(event_id)["completed_at"])
+            state.update(event_id, notified_at="2026-11-02T11:00:00+00:00")
+            self.assertEqual(send_due_reminders(active, state, {}, FakeDiscord(), self.now), 0)
+
     def test_auto_claim_notification_is_sent_once(self):
         with tempfile.TemporaryDirectory() as directory:
             active, state, event_id = self.make_store(directory)

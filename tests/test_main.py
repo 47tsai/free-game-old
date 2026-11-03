@@ -307,6 +307,17 @@ class MainFlowTests(unittest.TestCase):
         self.assertEqual(sent, [])
         self.assertIsNotNone(notifications.get(event_id).get("auto_notified_at"))
 
+
+    def test_already_owned_game_is_completed_without_auto_claim_notice(self):
+        success, sent, notifications, event_id, *_ = self._run_notification_flow(
+            claim_status="已擁有"
+        )
+        self.assertTrue(success)
+        self.assertEqual(sent, [])
+        self.assertEqual(notifications.get(event_id).get("claim_method"), "owned")
+        self.assertIsNotNone(notifications.get(event_id).get("completed_at"))
+        self.assertIsNone(notifications.get(event_id).get("notified_at"))
+
     def test_already_claimed_game_sends_success_notice_not_pending(self):
         success, sent, notifications, event_id, *_ = self._run_notification_flow(
             claim_status="已領取"
