@@ -471,8 +471,8 @@ class RuleBasedExtractorTests(unittest.TestCase):
         from free_game.ai import RuleBasedExtractor
 
         article = parse_article(
-            b'<html><body><a href="https://store.epicgames.com/p/example">'
-            b'Epic World - Hunt For Quest｜Epic Games Store</a></body></html>',
+            ('<html><body><a href="https://store.epicgames.com/p/example">'
+             'Epic World - Hunt For Quest｜Epic Games Store</a></body></html>').encode("utf-8"),
             "https://www.4gamers.com.tw/article/x",
             "EGS限免：《Epic World - Hunt For Quest》限時免費領",
         )
@@ -485,7 +485,7 @@ class RuleBasedExtractorTests(unittest.TestCase):
         from free_game.ai import RuleBasedExtractor
 
         article = parse_article(
-            b'<html><body><a href="https://store.steampowered.com/app/123/">立即領取</a></body></html>',
+            '<html><body><a href="https://store.steampowered.com/app/123/">立即領取</a></body></html>'.encode("utf-8"),
             "https://example.com/article",
             "Steam 限免：《Example Game》限時免費",
         )
