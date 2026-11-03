@@ -1,4 +1,6 @@
 import os
+import io
+from contextlib import redirect_stdout
 import tempfile
 import unittest
 
@@ -19,6 +21,36 @@ class MainFlowTests(unittest.TestCase):
             Game(name="First", link="https://store.steampowered.com/app/1/"),
             Game(name="Second", link="https://store.steampowered.com/app/2/"),
         ]
+
+    def test_extracted_game_names_are_logged(self):
+        class FakeHttp:
+            def get(self, url):
+                return b"<html><body>Example</body></html>", {}
+
+        class FakeAI:
+            def extract(self, article):
+                return [Game(name="Example Game", link="https://store.steampowered.com/app/1/")]
+
+        class FakeSteam:
+            def resolve(self, name, link):
+                return ""
+
+        class FakeDiscord:
+            def send(self, game, article_title, article_url):
+                pass
+
+        with tempfile.TemporaryDirectory() as d:
+            state = StateStore(d + "/state.json", 100)
+            output = io.StringIO()
+            with redirect_stdout(output):
+                process_article(
+                    self.article, FakeHttp(), state, FakeAI(), FakeDiscord(),
+                    FakeSteam(), state.load(),
+                )
+            self.assertIn(
+                'games extracted: 1; names=["Example Game"]',
+                output.getvalue(),
+            )
 
     def test_backfill_article_is_selected_when_missing_from_rss(self):
         with tempfile.TemporaryDirectory() as d:
