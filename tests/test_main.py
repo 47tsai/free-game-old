@@ -87,6 +87,7 @@ class MainFlowTests(unittest.TestCase):
                 return [Game(
                     name="Deferred",
                     platform="Steam",
+                    deadline="2026-11-10T12:00:00+08:00",
                     link="https://store.steampowered.com/app/99/",
                 )]
 
