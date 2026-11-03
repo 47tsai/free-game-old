@@ -10,12 +10,15 @@ ALLOWED_HOSTS = {
     "gog.com",
     "store.ubi.com",
     "store.ubisoft.com",
+    "dlsite.com",
 }
 
 
 def is_allowed_store_host(host):
     host = str(host or "").lower().rstrip(".")
     return any(host == allowed or host.endswith("." + allowed) for allowed in ALLOWED_HOSTS)
+
+
 SKIPPED_TAGS = {"script", "style", "noscript", "svg"}
 
 
