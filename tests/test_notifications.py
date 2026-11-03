@@ -91,6 +91,26 @@ class NotificationStateTests(unittest.TestCase):
             self.assertTrue(state.get(event_id)["reminder_uncertain"])
             self.assertEqual(send_due_reminders(active, state, {}, FakeDiscord(), self.now), 0)
 
+    def test_failed_auto_notice_suppresses_reminder_and_retries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            active, state, event_id = self.make_store(directory)
+
+            class Claims:
+                def get_status(self, game):
+                    return "已領取"
+
+            self.assertEqual(
+                sync_auto_claim_notifications(
+                    active, Claims(), state, FakeDiscord(RuntimeError("temporary")), self.now
+                ),
+                0,
+            )
+            self.assertEqual(state.get(event_id)["claim_method"], "auto")
+            self.assertEqual(send_due_reminders(active, state, {}, FakeDiscord(), self.now), 0)
+            discord = FakeDiscord()
+            self.assertEqual(sync_auto_claim_notifications(active, Claims(), state, discord, self.now), 1)
+            self.assertEqual([item[1] for item in discord.sent], ["已自動領取"])
+
     def test_auto_claim_notification_is_sent_once(self):
         with tempfile.TemporaryDirectory() as directory:
             active, state, event_id = self.make_store(directory)
