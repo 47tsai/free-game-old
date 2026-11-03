@@ -95,6 +95,77 @@ class GeminiExtractor:
     def __init__(self, http, api_key, model):
         self.http, self.api_key, self.model = http, api_key, model
 
+    def _generate_text(self, url, payload):
+        """Call Gemini and distinguish API errors, safety blocks, and bad envelopes."""
+        last_error = None
+        for attempt in range(2):
+            _, body, _ = self.http.post_json(
+                url, payload, timeout=45, headers={"x-goog-api-key": self.api_key}
+            )
+            try:
+                response = json.loads(body)
+            except (TypeError, json.JSONDecodeError) as exc:
+                last_error = RuntimeError(f"Gemini returned non-JSON API response: {exc}")
+            else:
+                if not isinstance(response, dict):
+                    raise RuntimeError(
+                        f"Gemini returned an unexpected response type: {type(response).__name__}"
+                    )
+
+                api_error = response.get("error")
+                if isinstance(api_error, dict):
+                    status = api_error.get("status", "unknown status")
+                    message = api_error.get("message", "no message provided")
+                    code = api_error.get("code", "unknown code")
+                    detail = f"Gemini API error {code} ({status}): {message}"
+                    if code in (429, 500, 502, 503, 504) and attempt == 0:
+                        last_error = RuntimeError(detail)
+                    else:
+                        raise RuntimeError(detail)
+
+                prompt_feedback = response.get("promptFeedback")
+                if isinstance(prompt_feedback, dict) and prompt_feedback.get("blockReason"):
+                    reason = prompt_feedback["blockReason"]
+                    raise RuntimeError(f"Gemini blocked the prompt: {reason}")
+
+                candidates = response.get("candidates")
+                if isinstance(candidates, list) and candidates:
+                    candidate = candidates[0]
+                    if not isinstance(candidate, dict):
+                        raise RuntimeError("Gemini returned a malformed candidate")
+                    finish_reason = candidate.get("finishReason")
+                    content = candidate.get("content")
+                    parts = content.get("parts") if isinstance(content, dict) else None
+                    if isinstance(parts, list):
+                        for part in parts:
+                            if isinstance(part, dict) and isinstance(part.get("text"), str):
+                                return part["text"].strip()
+                    raise RuntimeError(
+                        "Gemini candidate contains no text"
+                        + (f" (finishReason={finish_reason})" if finish_reason else "")
+                    )
+
+                if isinstance(candidates, list) and not candidates:
+                    raise RuntimeError(
+                        "Gemini returned no candidates"
+                        + (
+                            f" (finishReason={response.get('promptFeedback', {}).get('blockReason')})"
+                            if isinstance(response.get("promptFeedback"), dict)
+                            and response["promptFeedback"].get("blockReason")
+                            else ""
+                        )
+                    )
+
+                keys = ", ".join(sorted(str(key) for key in response.keys())) or "(empty)"
+                last_error = RuntimeError(
+                    f"Gemini response is missing 'candidates'; top-level keys: {keys}"
+                )
+
+            if attempt == 0:
+                time.sleep(1)
+
+        raise RuntimeError(f"Gemini response failed after one retry: {last_error}") from last_error
+
     def extract(self, article):
         if not self.api_key:
             raise RuntimeError("GEMINI_API_KEY is not configured")
@@ -125,15 +196,8 @@ class GeminiExtractor:
                 "responseMimeType": "application/json",
             },
         }
-        _, body, _ = self.http.post_json(
-            url, payload, timeout=45, headers={"x-goog-api-key": self.api_key}
-        )
+        raw = self._generate_text(url, payload)
 
-        try:
-            response = json.loads(body)
-            raw = response["candidates"][0]["content"]["parts"][0]["text"].strip()
-        except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
-            raise RuntimeError(f"Gemini returned an invalid response: {exc}") from exc
 
         raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.I)
         try:
