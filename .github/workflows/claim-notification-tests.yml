@@ -1,6 +1,9 @@
 name: Claim Notification Tests
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - feature/claim-notifications
