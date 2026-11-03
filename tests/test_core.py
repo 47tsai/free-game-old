@@ -512,7 +512,7 @@ class RuleBasedExtractorTests(unittest.TestCase):
         )
         self.assertEqual(RuleBasedExtractor().extract(article), [])
 
-    def test_does_not_extract_dlsite_links(self):
+    def test_does_not_extract_adult_dlsite_links(self):
         from free_game.ai import RuleBasedExtractor
 
         article = parse_article(
@@ -521,6 +521,18 @@ class RuleBasedExtractorTests(unittest.TestCase):
             "《Example》限時免費",
         )
         self.assertEqual(RuleBasedExtractor().extract(article), [])
+
+    def test_extracts_all_ages_dlsite_software_links(self):
+        from free_game.ai import RuleBasedExtractor
+
+        article = parse_article(
+            b'<html><body><a href="https://www.dlsite.com/soft/work/=/product_id/RJ456/">Example Software</a></body></html>',
+            "https://example.com/article",
+            "《Example Software》限時免費",
+        )
+        games = RuleBasedExtractor().extract(article)
+        self.assertEqual([game.name for game in games], ["Example Software"])
+        self.assertEqual(games[0].platform, "DLsite")
 
 
 class StateTests(unittest.TestCase):
@@ -777,7 +789,7 @@ class RuleBasedExtractorTests(unittest.TestCase):
         )
         self.assertEqual(RuleBasedExtractor().extract(article), [])
 
-    def test_does_not_extract_dlsite_links(self):
+    def test_does_not_extract_adult_dlsite_links(self):
         from free_game.ai import RuleBasedExtractor
 
         article = parse_article(
@@ -786,6 +798,18 @@ class RuleBasedExtractorTests(unittest.TestCase):
             "《Example》限時免費",
         )
         self.assertEqual(RuleBasedExtractor().extract(article), [])
+
+    def test_extracts_all_ages_dlsite_software_links(self):
+        from free_game.ai import RuleBasedExtractor
+
+        article = parse_article(
+            b'<html><body><a href="https://www.dlsite.com/soft/work/=/product_id/RJ456/">Example Software</a></body></html>',
+            "https://example.com/article",
+            "《Example Software》限時免費",
+        )
+        games = RuleBasedExtractor().extract(article)
+        self.assertEqual([game.name for game in games], ["Example Software"])
+        self.assertEqual(games[0].platform, "DLsite")
 
 
 
