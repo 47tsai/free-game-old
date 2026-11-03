@@ -158,7 +158,13 @@ def process_article(
                 else:
                     event_id = _event_id(game)
                     notification = notification_state.get(event_id)
-                    if not notification.get("notified_at") and not notification.get("auto_notified_at") and not notification.get("initial_uncertain"):
+                    if (
+                        not notification.get("notified_at")
+                        and not notification.get("auto_notified_at")
+                        and not notification.get("initial_uncertain")
+                        and not notification.get("completed_at")
+                        and notification.get("claim_method") != "manual"
+                    ):
                         if is_success(claim_status):
                             discord.send_status(game, "已自動領取", article_url=article.url)
                             notification_state.update(
