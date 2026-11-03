@@ -1,6 +1,7 @@
 """Track Discord notification lifecycle independently of the expiring web index."""
 
 import json
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -61,7 +62,8 @@ class NotificationStateStore:
 def load_manual_claims(http, url):
     """Read Worker-owned public state. A missing file means no manual claims yet."""
     try:
-        body, _ = http.get(url)
+        separator = "&" if "?" in url else "?"
+        body, _ = http.get(f"{url}{separator}v={int(time.time())}")
     except HttpError as exc:
         if "HTTP 404:" in str(exc):
             return {}
