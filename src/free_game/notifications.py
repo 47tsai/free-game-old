@@ -106,15 +106,13 @@ def sync_auto_claim_notifications(active_games, claims, notification_state, disc
         )
         if is_success(previous_status):
             item["claim_status"] = status
-            if record.get("notified_at") and not record.get("completed_at"):
-                notification_state.update(
-                    event_id, completed_at=_iso(now), claim_method="auto"
-                )
+            # The article refresh may have saved the successful claim status
+            # before this sync ran. If an initial pending notice was sent,
+            # still deliver its separate auto-claim success notice.
+            if not record.get("notified_at") and not retry_auto_notice:
                 continue
             # A previous send may have failed after the claim status was saved.
             # Retry only known failures; ambiguous deliveries remain suppressed.
-            if not retry_auto_notice:
-                continue
         if (
             record.get("claim_method") == "manual"
             or record.get("auto_notified_at")
