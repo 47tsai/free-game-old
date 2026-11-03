@@ -16,7 +16,7 @@ from free_game.config import (
     USER_AGENT,
     WEBHOOK_URL,
 )
-from free_game.active import ActiveGameStore, _event_id
+from free_game.active import ActiveGameStore, _event_id, _parse_deadline
 from free_game.discord import DiscordSender
 from free_game.claims import ClaimStore, load_cursor, poll_ntfy, save_cursor
 from free_game.http import AmbiguousDeliveryError, HttpClient
@@ -149,6 +149,17 @@ def process_article(
             )
             if active_games and not epic_campaign_is_upcoming:
                 active_games.upsert(game, article.title, article.url, claim_status)
+
+            # Expired campaigns may still appear in RSS or a backfill entry.
+            # Mark them processed without sending a stale Discord notification.
+            deadline_at = _parse_deadline(game.deadline)
+            if deadline_at is not None and deadline_at <= datetime.now(timezone.utc):
+                print(
+                    f"[INFO] {item.url} | {game.name}: campaign expired; "
+                    "skipping Discord notification"
+                )
+                processed.add(key)
+                continue
 
             # Existing game/article state still prevents duplicate notifications.
             if state.is_game_processed(processed, item.url, game):
