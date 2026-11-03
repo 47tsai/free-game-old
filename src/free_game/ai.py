@@ -140,9 +140,14 @@ class RuleBasedExtractor:
         result = []
         seen = set()
         for store_link in article.store_links:
-            host = urlparse(store_link.url).hostname or ""
+            parsed = urlparse(store_link.url)
+            host = parsed.hostname or ""
             if host == "dlsite.com" or host.endswith(".dlsite.com"):
-                continue
+                # Only process the explicitly all-ages software category.
+                # Adult and unknown DLsite categories are excluded.
+                path = parsed.path.lower()
+                if not path.startswith("/soft/"):
+                    continue
 
             name = self._clean_name(store_link.context)
             if not name and len(article.store_links) == 1:
