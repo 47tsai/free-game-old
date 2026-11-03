@@ -138,9 +138,7 @@
   }
 
   function isClaimed(game) {
-    if (Object.prototype.hasOwnProperty.call(manualClaims, game.id)) {
-      return Boolean(manualClaims[game.id].claimed);
-    }
+    if (manualClaims[game.id]?.claimed === true) return true;
     return ["已領取", "已擁有"].includes(game.claim_status);
   }
 
