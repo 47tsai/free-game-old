@@ -35,6 +35,19 @@ class NotificationStateTests(unittest.TestCase):
         event_id = next(iter(active.records))
         return active, state, event_id
 
+    def test_reading_missing_state_does_not_create_empty_record(self):
+        with tempfile.TemporaryDirectory() as directory:
+            state = NotificationStateStore(Path(directory) / "notification-state.json")
+            self.assertEqual(state.get("missing-event"), {})
+            self.assertEqual(state.records, {})
+
+    def test_update_creates_record_after_read_only_lookup(self):
+        with tempfile.TemporaryDirectory() as directory:
+            state = NotificationStateStore(Path(directory) / "notification-state.json")
+            self.assertEqual(state.get("new-event"), {})
+            state.update("new-event", notified_at="2026-11-03T12:00:00+00:00")
+            self.assertEqual(state.records["new-event"]["notified_at"], "2026-11-03T12:00:00+00:00")
+
     def test_state_round_trip(self):
         with tempfile.TemporaryDirectory() as directory:
             _, state, event_id = self.make_store(directory)
