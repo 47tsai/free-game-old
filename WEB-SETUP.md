@@ -8,7 +8,7 @@
 - `worker/`: API Worker，綁定 `fg-api.chi.qzz.io`。
 - `src/free_game/active.py`: 目前有效限免活動的持久化。
 - `data/active-games.json`: notifier 自動更新，僅保留截止時間尚未到期的活動。
-- `data/manual-claims.json`: Worker 透過 GitHub Contents API 更新的手動領取狀態。
+- `data/manual-claims.json`: Worker 透過 GitHub Contents API 更新的手動領取狀態，notifier 僅讀取。\n- `data/notification-state.json`: GitHub Actions 管理的通知追蹤資料，獨立於會過期的活動清單保存。
 
 ## OAuth 設定
 
@@ -52,7 +52,7 @@ GitHub Repository Settings → Secrets and variables → Actions：
 
 - 活動識別碼由平台、遊戲名稱、商店連結及截止時間產生。同一款遊戲再次限免會得到新的活動 ID。
 - 前端只呈現截止時間仍在未來的活動。
-- FGC 狀態從既有 `data/claims.json` 讀取；手動狀態優先，且可手動取消。
+- FGC 狀態從既有 `data/claims.json` 讀取；手動狀態優先，且可手動取消。\n- Discord 尚未領取通知發送成功時記錄 `notified_at`；滿 24 小時仍未完成且活動未截止時，最多提醒一次。\n- FGC 後續成功領取會另外發送「已自動領取」Embed；手動標記完成會抑制提醒。\n- `data/notification-state.json` 由 Actions 寫回；Worker 不會修改此檔案。
 - 手動紀錄在活動過期後清除，不作為永久收藏或歷史紀錄。
 - 前端只在記憶體保存 access token；OAuth state 與 PKCE verifier 僅暫存在 sessionStorage，交換完成即清除。
 
