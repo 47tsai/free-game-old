@@ -1,21 +1,5 @@
 {
-  "updated_at": "2026-11-02T10:01:26+00:00",
+  "updated_at": "2026-11-03T06:39:59+00:00",
   "bootstrapped": true,
-  "games": [
-    {
-      "id": "e34eb5c478a2ea04ad78",
-      "name": "Sorry We're Closed",
-      "platform": "Epic Games Store",
-      "link": "https://store.epicgames.com/p/sorry-were-closed-724c86",
-      "image": "https://img.4gamers.com.tw/news-image/a84a7726-5038-48bd-a47c-c93ab3f8a22b.jpg",
-      "deadline": "2026-11-02T16:00:00+00:00",
-      "original_price": "$348.00",
-      "genre": "生存恐怖",
-      "brief": "這是一款由獨立工作室 à la mode games 開發的敘事向生存恐怖遊戲，玩家將在充滿復古霓虹氛圍的環境中，面對未知的恐懼並揭開故事真相。",
-      "claim_status": "尚無回報",
-      "article_title": "EGS每周限免10/29~11/6：復古霓虹生存恐怖《Sorry We're Closed》限時免費",
-      "article_url": "https://www.4gamers.com.tw/news/detail/82952/horror-game-sorry-we-re-closed-is-is-free-to-keep-on-epic-games-store",
-      "updated_at": "2026-11-01T03:44:17+00:00"
-    }
-  ]
+  "games": []
 }
