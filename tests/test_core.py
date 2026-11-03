@@ -466,6 +466,256 @@ class DiscordTests(unittest.TestCase):
         self.assertEqual(payload["allowed_mentions"], {"parse": []})
 
 
+class RuleBasedExtractorTests(unittest.TestCase):
+    def test_extracts_game_name_from_store_anchor_and_strips_store_label(self):
+        from free_game.ai import RuleBasedExtractor
+
+        article = parse_article(
+            b'<html><body><a href="https://store.epicgames.com/p/example">'
+            b'Epic World - Hunt For Quest｜Epic Games Store</a></body></html>',
+            "https://www.4gamers.com.tw/article/x",
+            "EGS限免：《Epic World - Hunt For Quest》限時免費領",
+        )
+        games = RuleBasedExtractor().extract(article)
+        self.assertEqual(len(games), 1)
+        self.assertEqual(games[0].name, "Epic World - Hunt For Quest")
+        self.assertEqual(games[0].platform, "Epic Games Store")
+
+    def test_uses_single_unambiguous_headline_title_when_anchor_is_generic(self):
+        from free_game.ai import RuleBasedExtractor
+
+        article = parse_article(
+            b'<html><body><a href="https://store.steampowered.com/app/123/">立即領取</a></body></html>',
+            "https://example.com/article",
+            "Steam 限免：《Example Game》限時免費",
+        )
+        games = RuleBasedExtractor().extract(article)
+        self.assertEqual([game.name for game in games], ["Example Game"])
+
+    def test_does_not_guess_when_multiple_headline_titles_and_generic_anchor(self):
+        from free_game.ai import RuleBasedExtractor
+
+        article = parse_article(
+            b'<html><body><a href="https://store.steampowered.com/app/123/">立即領取</a></body></html>',
+            "https://example.com/article",
+            "限免：《Example Game》與《Another Game》",
+        )
+        self.assertEqual(RuleBasedExtractor().extract(article), [])
+
+    def test_ignores_generic_anchor_without_unambiguous_title(self):
+        from free_game.ai import RuleBasedExtractor
+
+        article = parse_article(
+            b'<html><body><a href="https://store.steampowered.com/app/123/">立即領取</a></body></html>',
+            "https://example.com/article",
+            "Steam 限免活動",
+        )
+        self.assertEqual(RuleBasedExtractor().extract(article), [])
+
+    def test_does_not_extract_dlsite_links(self):
+        from free_game.ai import RuleBasedExtractor
+
+        article = parse_article(
+            b'<html><body><a href="https://www.dlsite.com/maniax/work/=/product_id/RJ123/">Example</a></body></html>',
+            "https://example.com/article",
+            "《Example》限時免費",
+        )
+        self.assertEqual(RuleBasedExtractor().extract(article), [])
+
+
+class StateTests(unittest.TestCase):
+    def test_state_save_is_atomic_when_replace_fails(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "state.json"
+            path.write_text('[\"previous-valid-state\"]\n', encoding="utf-8")
+            store = StateStore(path, 100)
+
+            with patch.object(Path, "replace", side_effect=OSError("simulated failure")):
+                with self.assertRaises(OSError):
+                    store.save({"new-state"})
+
+            self.assertEqual(
+                path.read_text(encoding="utf-8"),
+                '[\"previous-valid-state\"]\n',
+            )
+            path.with_name(path.name + ".tmp").unlink()
+
+    def test_missing_state_file_starts_empty(self):
+        with tempfile.TemporaryDirectory() as d:
+            store = StateStore(Path(d) / "missing.json", 100)
+            self.assertEqual(store.load(), set())
+
+    def test_corrupt_state_file_fails_closed(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "state.json"
+            path.write_text("{invalid json", encoding="utf-8")
+            store = StateStore(path, 100)
+            with self.assertRaisesRegex(RuntimeError, "state file is invalid"):
+                store.load()
+
+    def test_state_file_with_wrong_json_shape_fails_closed(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "state.json"
+            path.write_text('{"processed": []}', encoding="utf-8")
+            store = StateStore(path, 100)
+            with self.assertRaisesRegex(RuntimeError, "invalid structure"):
+                store.load()
+
+    def test_state_file_with_non_string_entry_fails_closed(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "state.json"
+            path.write_text('[\"valid-key\", 42]', encoding="utf-8")
+            store = StateStore(path, 100)
+            with self.assertRaisesRegex(RuntimeError, "invalid structure"):
+                store.load()
+
+    def test_state_preserves_recent_insertion_order(self):
+        with tempfile.TemporaryDirectory() as d:
+            store = StateStore(d + "/state.json", 2)
+            store.save({"old", "new"})
+            store.save({"new", "latest"})
+            self.assertEqual(store.load(), {"new", "latest"})
+
+
+class CoreStateTests(unittest.TestCase):
+    def test_game_key_and_legacy_article_key(self):
+        game = Game(name="Example", link="https://store.steampowered.com/app/1/")
+        key = StateStore.game_key(game)
+        self.assertTrue(key.startswith("game|"))
+        values = {key}
+        self.assertTrue(
+            StateStore.is_game_processed(
+                values, "https://example.com/article", game
+            )
+        )
+        values = {StateStore.article_key("https://example.com/article")}
+        self.assertTrue(
+            StateStore.is_article_processed(
+                values, "https://example.com/article"
+            )
+        )
+
+    def test_uncertain_delivery_is_suppressed_across_future_runs(self):
+        game = Game(
+            name="Example Game",
+            link="https://store.steampowered.com/app/1/",
+        )
+        uncertain = {StateStore.uncertain_game_key(game)}
+        self.assertTrue(
+            StateStore.is_game_processed(
+                uncertain, "https://example.com/article", game
+            )
+        )
+        self.assertNotIn(StateStore.game_key(game), uncertain)
+
+    def test_same_game_is_deduplicated_across_articles(self):
+        game = Game(
+            name="Example Game",
+            link="https://store.steampowered.com/app/1/",
+        )
+        values = {StateStore.game_key(game)}
+        self.assertTrue(
+            StateStore.is_game_processed(
+                values, "https://example.com/another-article", game
+            )
+        )
+
+    def test_different_games_are_not_deduplicated(self):
+        game = Game(
+            name="Example Game",
+            link="https://store.steampowered.com/app/1/",
+        )
+        other = Game(
+            name="Another Game",
+            link="https://store.steampowered.com/app/2/",
+        )
+        values = {StateStore.game_key(game)}
+        self.assertFalse(
+            StateStore.is_game_processed(
+                values, "https://example.com/article", other
+            )
+        )
+
+
+class DiscordTests(unittest.TestCase):
+    def test_format_deadline_uses_taiwan_timezone_timestamp(self):
+        formatted = format_deadline(
+            "2026-11-03T00:00:00+08:00",
+            now=datetime(2026, 11, 2, 0, 0, tzinfo=timezone.utc),
+        )
+        self.assertTrue(formatted.startswith("2026 年 11 月 3 日（週二） 00:00"))
+        self.assertIn("（約 ", formatted)
+
+    def test_date_without_time_is_not_guessed(self):
+        self.assertEqual(format_deadline("2026年11月3日"), "2026年11月3日")
+
+    def _send(self, game):
+        class FakeHttp:
+            def post_json(self, url, payload, **kwargs):
+                self.url = url
+                self.payload = payload
+                self.kwargs = kwargs
+                return 204, b"", {}
+
+        http = FakeHttp()
+        DiscordSender(http, "https://discord.example/webhook").send(
+            game, "Article", "https://example.com/article"
+        )
+        return http
+
+    def test_sender_uses_simplified_embed_layout(self):
+        game = Game(
+            name="Example",
+            platform="Steam",
+            deadline="2026年11月3日 0點前",
+            genre="生態模擬",
+            rating="None",
+            brief="建立並維持一個完整的生態系統。",
+            link="https://store.steampowered.com/app/1/",
+            image="https://example.com/image.jpg",
+            steam_price="",
+            original_price="$52",
+        )
+
+        embed = self._send(game).payload["embeds"][0]
+        self.assertEqual(embed["title"], "尚未領取")
+        self.assertIn("Example", embed["description"])
+        self.assertIn("Steam", embed["description"])
+        self.assertNotIn("原價", embed["description"])
+        self.assertNotIn("期限", embed["description"])
+        self.assertNotIn("遊戲類型", embed["description"])
+        self.assertNotIn("玩家評價", embed["description"])
+        self.assertNotIn("url", embed)
+        self.assertNotIn("image", embed)
+        self.assertEqual(embed["footer"]["text"], "Free Game Notifier")
+        self.assertEqual(embed["color"], 0xFEE75C)
+
+    def test_sender_adds_two_link_buttons(self):
+        game = Game(
+            name="Example",
+            link="https://store.steampowered.com/app/1/",
+        )
+
+        http = self._send(game)
+        self.assertEqual(http.url, "https://discord.example/webhook?with_components=true&wait=true")
+        self.assertEqual(http.kwargs["retry_status"], {429})
+        self.assertFalse(http.kwargs["retry_transport_errors"])
+        self.assertTrue(http.kwargs["ambiguous_on_error"])
+        buttons = http.payload["components"][0]["components"]
+        self.assertEqual(len(buttons), 2)
+        self.assertEqual(buttons[0]["label"], "4Gamers")
+        self.assertEqual(buttons[0]["url"], "https://example.com/article")
+        self.assertEqual(buttons[0]["style"], 5)
+        self.assertEqual(buttons[1]["label"], "網站標記已領取")
+        self.assertEqual(buttons[1]["url"], "https://fg.chi.qzz.io/")
+        self.assertEqual(buttons[1]["style"], 5)
+
+    def test_sender_disables_mentions(self):
+        game = Game(name="Example", link="https://store.steampowered.com/app/1/")
+        payload = self._send(game).payload
+        self.assertEqual(payload["allowed_mentions"], {"parse": []})
+
+
 class AITests(unittest.TestCase):
     def test_deadline_normalizes_midnight_and_noon_periods(self):
         from free_game.ai import extract_deadline
