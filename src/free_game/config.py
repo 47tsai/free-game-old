@@ -12,3 +12,6 @@ USER_AGENT = "free-game-notifier/2.0"
 NTFY_URL = os.getenv("NTFY_URL", "https://ntfy.sh/47tsai-fgc").strip().rstrip("/")
 CLAIMS_FILE = "data/claims.json"
 NTFY_CURSOR_FILE = "data/ntfy_cursor.json"
+
+MANUAL_CLAIMS_URL = "https://raw.githubusercontent.com/47tsai/free-game/main/data/manual-claims.json"
+NOTIFICATION_STATE_FILE = "data/notification-state.json"

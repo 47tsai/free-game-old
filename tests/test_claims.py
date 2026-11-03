@@ -28,6 +28,7 @@ class ClaimParsingTests(unittest.TestCase):
                 ("steam", "Example Game", "claimed"),
                 ("steam", "Broken Game", "failed:unconfirmed"),
                 ("epic", "Epic Example", "claimed"),
+                ("gog", "Other Game", "claimed"),
             ],
         )
 
@@ -53,6 +54,10 @@ class ClaimParsingTests(unittest.TestCase):
             self.assertEqual(
                 store.get_status(Game(name="Example Game", platform="Epic Games Store")),
                 "尚無回報",
+            )
+            self.assertEqual(
+                store.get_status(Game(name="Other Game", platform="GOG")),
+                "已領取",
             )
             self.assertEqual(
                 store.get_status(Game(name="Not Reported", platform="Steam")),

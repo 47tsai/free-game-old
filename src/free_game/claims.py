@@ -27,11 +27,13 @@ def platform_key(value):
         return "steam"
     if "epic" in value:
         return "epic"
+    if "gog" in value:
+        return "gog"
     return ""
 
 
 def parse_summary(message):
-    """Parse FGC's markdown summary, retaining only Steam and Epic entries."""
+    """Parse FGC's markdown summary, for Steam, Epic, and GOG entries."""
     current_platform = ""
     records = []
 

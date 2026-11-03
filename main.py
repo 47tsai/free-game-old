@@ -1,7 +1,11 @@
+from datetime import datetime, timezone
+
 from free_game.ai import GeminiExtractor
 from free_game.article import parse_article
 from free_game.config import (
     GEMINI_API_KEY,
+    MANUAL_CLAIMS_URL,
+    NOTIFICATION_STATE_FILE,
     GEMINI_MODEL,
     NTFY_URL,
     CLAIMS_FILE,
@@ -12,13 +16,17 @@ from free_game.config import (
     USER_AGENT,
     WEBHOOK_URL,
 )
-from free_game.active import ActiveGameStore
+from free_game.active import ActiveGameStore, _event_id
 from free_game.discord import DiscordSender
 from free_game.claims import ClaimStore, load_cursor, poll_ntfy, save_cursor
 from free_game.http import AmbiguousDeliveryError, HttpClient
 from free_game.models import Article, Game
 from free_game.rss import is_free_game_article, parse_rss
 from free_game.state import StateStore
+from free_game.notifications import (
+    NotificationStateStore, load_manual_claims, mark_manual_completions,
+    sync_auto_claim_notifications, send_due_reminders, is_success,
+)
 from free_game.stores import EpicPromotionResolver, SteamPriceResolver
 
 
@@ -59,7 +67,7 @@ def select_articles(
 
 def process_article(
     item, http, state, ai, discord, steam, processed,
-    epic=None, claims=None, active_games=None,
+    epic=None, claims=None, active_games=None, notification_state=None,
 ):
     html, _ = http.get(item.url)
     article = parse_article(html, item.url, item.title, item.summary, item.published)
@@ -145,8 +153,29 @@ def process_article(
                 continue
 
             try:
-                discord.send(game, article.title, article.url)
+                if notification_state is None:
+                    discord.send(game, article.title, article.url)
+                else:
+                    event_id = _event_id(game)
+                    notification = notification_state.get(event_id)
+                    if not notification.get("notified_at") and not notification.get("auto_notified_at") and not notification.get("initial_uncertain"):
+                        if is_success(claim_status):
+                            discord.send_status(game, "已自動領取", article_url=article.url)
+                            notification_state.update(
+                                event_id,
+                                auto_notified_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                                completed_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                                claim_method="auto",
+                            )
+                        else:
+                            discord.send_status(game, "尚未領取", article_url=article.url)
+                            notification_state.update(
+                                event_id,
+                                notified_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                            )
             except AmbiguousDeliveryError as exc:
+                if notification_state is not None:
+                    notification_state.update(_event_id(game), initial_uncertain=True)
                 processed.add(state.uncertain_game_key(game))
                 print(
                     f"[WARN] {item.url} | {game.name}: delivery outcome unknown; "
@@ -172,6 +201,8 @@ def main():
     claims.load()
     active_games = ActiveGameStore("data/active-games.json")
     active_games.load()
+    notification_state = NotificationStateStore(NOTIFICATION_STATE_FILE)
+    notification_state.load()
     rebuild_active_index = not active_games.bootstrapped
     removed = active_games.prune()
     if removed:
@@ -195,6 +226,21 @@ def main():
     claims.save()
     save_cursor(NTFY_CURSOR_FILE, cursor)
 
+    discord = DiscordSender(http, WEBHOOK_URL)
+    try:
+        manual_claims = load_manual_claims(http, MANUAL_CLAIMS_URL)
+    except Exception as exc:
+        manual_claims = None
+        print(f"[WARN] manual claim state unavailable; reminders will be skipped: {exc}")
+    mark_manual_completions(active_games, notification_state, manual_claims)
+    auto_notices = sync_auto_claim_notifications(
+        active_games, claims, notification_state, discord
+    )
+    if auto_notices:
+        print(f"[INFO] automatic-claim notifications sent: {auto_notices}")
+    active_games.save()
+    notification_state.save()
+
     data, _ = http.get(RSS_URL)
     rss_articles = parse_rss(data)
     articles = select_articles(
@@ -202,7 +248,6 @@ def main():
         include_processed=rebuild_active_index,
     )
     ai = GeminiExtractor(http, GEMINI_API_KEY, GEMINI_MODEL)
-    discord = DiscordSender(http, WEBHOOK_URL)
     steam = SteamPriceResolver(http)
     epic = EpicPromotionResolver(http)
     failures = 0
@@ -211,7 +256,7 @@ def main():
         try:
             if not process_article(
                 item, http, state, ai, discord, steam, processed,
-                epic, claims, active_games,
+                epic, claims, active_games, notification_state,
             ):
                 failures += 1
         except Exception as exc:
@@ -221,9 +266,17 @@ def main():
             state.save(processed)
             active_games.prune()
             active_games.save()
+            notification_state.save()
 
     if failures:
         raise RuntimeError(f"{failures} article(s) failed")
+
+    reminders = send_due_reminders(
+        active_games, notification_state, manual_claims, discord
+    )
+    if reminders:
+        print(f"[INFO] 24-hour reminders sent: {reminders}")
+    notification_state.save()
 
     if rebuild_active_index:
         active_games.bootstrapped = True

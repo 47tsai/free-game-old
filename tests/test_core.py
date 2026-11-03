@@ -1,6 +1,7 @@
 import json
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -358,7 +359,10 @@ class CoreStateTests(unittest.TestCase):
 
 class DiscordTests(unittest.TestCase):
     def test_format_deadline_uses_taiwan_timezone_timestamp(self):
-        formatted = format_deadline("2026-11-03T00:00:00+08:00")
+        formatted = format_deadline(
+            "2026-11-03T00:00:00+08:00",
+            now=datetime(2026, 11, 2, 0, 0, tzinfo=timezone.utc),
+        )
         self.assertTrue(formatted.startswith("2026 年 11 月 3 日（週二） 00:00"))
         self.assertIn("（約 ", formatted)
 
@@ -394,18 +398,17 @@ class DiscordTests(unittest.TestCase):
         )
 
         embed = self._send(game).payload["embeds"][0]
-        self.assertEqual(embed["title"], "Example")
-        self.assertEqual(embed["url"], game.link)
-        self.assertIn("💰 **原價**　~~US$52.00（約 NT$1,638）~~ 免費", embed["description"])
-        self.assertIn("⏳ **期限**　2026 年 11 月 3 日（週二） 00:00", embed["description"])
-        self.assertIn("🎮 **平台**　Steam", embed["description"])
-        self.assertIn("🧩 **遊戲類型**　生態模擬", embed["description"])
-        self.assertIn("📝 **介紹**　建立並維持一個完整的生態系統。", embed["description"])
-        self.assertIn("⭐ **玩家評價**　暫無資料", embed["description"])
-        self.assertEqual(embed["image"]["url"], game.image)
+        self.assertEqual(embed["title"], "尚未領取")
+        self.assertIn("Example", embed["description"])
+        self.assertIn("Steam", embed["description"])
+        self.assertNotIn("原價", embed["description"])
+        self.assertNotIn("期限", embed["description"])
+        self.assertNotIn("遊戲類型", embed["description"])
+        self.assertNotIn("玩家評價", embed["description"])
+        self.assertNotIn("url", embed)
+        self.assertNotIn("image", embed)
         self.assertEqual(embed["footer"]["text"], "Free Game Notifier")
-        self.assertNotIn("fields", embed)
-        self.assertEqual(embed["color"], 0x57F287)
+        self.assertEqual(embed["color"], 0xFEE75C)
 
     def test_sender_adds_two_link_buttons(self):
         game = Game(
@@ -421,12 +424,10 @@ class DiscordTests(unittest.TestCase):
         buttons = http.payload["components"][0]["components"]
         self.assertEqual(len(buttons), 2)
         self.assertEqual(buttons[0]["label"], "4Gamers")
-        self.assertEqual(buttons[0]["emoji"], {"name": "🔗"})
         self.assertEqual(buttons[0]["url"], "https://example.com/article")
         self.assertEqual(buttons[0]["style"], 5)
-        self.assertEqual(buttons[1]["label"], "商店頁")
-        self.assertEqual(buttons[1]["emoji"], {"name": "🛒"})
-        self.assertEqual(buttons[1]["url"], game.link)
+        self.assertEqual(buttons[1]["label"], "網站標記已領取")
+        self.assertEqual(buttons[1]["url"], "https://fg.chi.qzz.io/")
         self.assertEqual(buttons[1]["style"], 5)
 
     def test_sender_disables_mentions(self):

@@ -116,6 +116,7 @@ function platformKey(value) {
   const platform = String(value || "").toLocaleLowerCase();
   if (platform.includes("steam")) return "steam";
   if (platform.includes("epic")) return "epic";
+  if (platform.includes("gog")) return "gog";
   return "";
 }
 
