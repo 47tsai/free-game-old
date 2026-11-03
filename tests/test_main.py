@@ -6,6 +6,8 @@ os.environ.setdefault("DISCORD_WEBHOOK_URL", "https://discord.example/webhook")
 os.environ.setdefault("GEMINI_API_KEY", "test-key")
 
 from free_game.models import Article, Game
+from free_game.active import ActiveGameStore, _event_id
+from free_game.notifications import NotificationStateStore
 from free_game.state import StateStore
 from main import TERRASPACE_ARTICLE_URL, process_article, select_articles
 
@@ -214,6 +216,105 @@ class MainFlowTests(unittest.TestCase):
             )
             self.assertTrue(success)
             self.assertIn(state.article_key(self.article.url), processed)
+
+    def _run_notification_flow(self, claim_status="尚無回報", existing_state=None):
+        game = Game(
+            name="Notification Example",
+            platform="GOG",
+            deadline="2026-11-10T12:00:00+08:00",
+            link="https://www.gog.com/game/notification-example",
+        )
+
+        class FakeHttp:
+            def get(self, url):
+                return b"<html><body>Example</body></html>", {}
+
+        class FakeAI:
+            def extract(self, article):
+                return [game]
+
+        class FakeSteam:
+            def resolve(self, name, link):
+                return ""
+
+        class FakeClaims:
+            def get_status(self, game):
+                return claim_status
+
+        class FakeDiscord:
+            def __init__(self):
+                self.sent = []
+
+            def send_status(self, game, status, **kwargs):
+                self.sent.append((game.name, status, kwargs))
+
+            def send(self, game, article_title, article_url):
+                self.sent.append((game.name, "尚未領取", {}))
+
+        with tempfile.TemporaryDirectory() as directory:
+            state = StateStore(directory + "/processed.json", 100)
+            processed = state.load()
+            active = ActiveGameStore(directory + "/active-games.json")
+            notifications = NotificationStateStore(directory + "/notification-state.json")
+            notifications.load()
+            event_id = _event_id(game)
+            if existing_state:
+                notifications.update(event_id, **existing_state)
+            discord = FakeDiscord()
+
+            success = process_article(
+                self.article,
+                FakeHttp(),
+                state,
+                FakeAI(),
+                discord,
+                FakeSteam(),
+                processed,
+                claims=FakeClaims(),
+                active_games=active,
+                notification_state=notifications,
+            )
+            return success, discord.sent, notifications, event_id, game, process_article, (
+                FakeHttp(), state, FakeAI(), FakeSteam(), FakeClaims(), active, processed
+            )
+
+    def test_initial_pending_notification_records_first_notice_time(self):
+        success, sent, notifications, event_id, *_ = self._run_notification_flow()
+        self.assertTrue(success)
+        self.assertEqual([item[1] for item in sent], ["尚未領取"])
+        self.assertIsNotNone(notifications.get(event_id).get("notified_at"))
+
+    def test_manual_completion_suppresses_initial_pending_notification(self):
+        success, sent, notifications, event_id, *_ = self._run_notification_flow(
+            existing_state={
+                "completed_at": "2026-11-02T12:00:00+00:00",
+                "claim_method": "manual",
+            }
+        )
+        self.assertTrue(success)
+        self.assertEqual(sent, [])
+        self.assertEqual(notifications.get(event_id).get("claim_method"), "manual")
+
+    def test_previous_auto_completion_suppresses_initial_pending_notification(self):
+        success, sent, notifications, event_id, *_ = self._run_notification_flow(
+            existing_state={
+                "completed_at": "2026-11-02T12:00:00+00:00",
+                "claim_method": "auto",
+                "auto_notified_at": "2026-11-02T12:00:00+00:00",
+            }
+        )
+        self.assertTrue(success)
+        self.assertEqual(sent, [])
+        self.assertIsNotNone(notifications.get(event_id).get("auto_notified_at"))
+
+    def test_already_claimed_game_sends_success_notice_not_pending(self):
+        success, sent, notifications, event_id, *_ = self._run_notification_flow(
+            claim_status="已領取"
+        )
+        self.assertTrue(success)
+        self.assertEqual([item[1] for item in sent], ["已自動領取"])
+        self.assertIsNotNone(notifications.get(event_id).get("auto_notified_at"))
+        self.assertEqual(notifications.get(event_id).get("claim_method"), "auto")
 
 
 if __name__ == "__main__":
