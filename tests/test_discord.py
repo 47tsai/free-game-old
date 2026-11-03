@@ -21,8 +21,8 @@ class DiscordEmbedTests(unittest.TestCase):
                            article_url="https://example.com/article")
         payload = http.calls[0][1]
         embed = payload["embeds"][0]
-        self.assertEqual(embed["title"], "Example")
-        self.assertIn("尚未領取", embed["description"])
+        self.assertEqual(embed["title"], "尚未領取")
+        self.assertIn("Example", embed["description"])
         self.assertIn("GOG", embed["description"])
         self.assertNotIn("image", embed)
         buttons = payload["components"][0]["components"]
