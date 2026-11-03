@@ -6,7 +6,7 @@ from pathlib import Path
 from free_game.active import ActiveGameStore
 from free_game.http import AmbiguousDeliveryError
 from free_game.models import Game
-from free_game.notifications import NotificationStateStore, send_due_reminders, sync_auto_claim_notifications
+from free_game.notifications import NotificationStateStore, mark_manual_completions, send_due_reminders, sync_auto_claim_notifications
 
 
 class FakeDiscord:
@@ -60,6 +60,20 @@ class NotificationStateTests(unittest.TestCase):
             active, state, event_id = self.make_store(directory)
             state.update(event_id, notified_at="2026-11-02T11:00:00+00:00")
             self.assertEqual(send_due_reminders(active, state, {event_id: {"claimed": True}}, FakeDiscord(), self.now), 0)
+
+    def test_unmarking_manual_claim_resumes_pending_reminder(self):
+        with tempfile.TemporaryDirectory() as directory:
+            active, state, event_id = self.make_store(directory)
+            state.update(
+                event_id,
+                notified_at="2026-11-02T11:00:00+00:00",
+                completed_at="2026-11-02T12:00:00+00:00",
+                claim_method="manual",
+            )
+            mark_manual_completions(active, state, {}, self.now)
+            self.assertIsNone(state.get(event_id)["completed_at"])
+            discord = FakeDiscord()
+            self.assertEqual(send_due_reminders(active, state, {}, discord, self.now), 1)
 
     def test_expired_campaign_does_not_receive_reminder(self):
         with tempfile.TemporaryDirectory() as directory:
