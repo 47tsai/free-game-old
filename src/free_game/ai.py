@@ -120,8 +120,9 @@ class GeminiExtractor:
                     detail = f"Gemini API error {code} ({status}): {message}"
                     if code in (429, 500, 502, 503, 504) and attempt == 0:
                         last_error = RuntimeError(detail)
-                    else:
-                        raise RuntimeError(detail)
+                        time.sleep(1)
+                        continue
+                    raise RuntimeError(detail)
 
                 prompt_feedback = response.get("promptFeedback")
                 if isinstance(prompt_feedback, dict) and prompt_feedback.get("blockReason"):
