@@ -1,7 +1,11 @@
+from datetime import datetime, timezone
+
 from free_game.ai import GeminiExtractor
 from free_game.article import parse_article
 from free_game.config import (
     GEMINI_API_KEY,
+    MANUAL_CLAIMS_URL,
+    NOTIFICATION_STATE_FILE,
     GEMINI_MODEL,
     NTFY_URL,
     CLAIMS_FILE,
@@ -18,7 +22,11 @@ from free_game.claims import ClaimStore, load_cursor, poll_ntfy, save_cursor
 from free_game.http import AmbiguousDeliveryError, HttpClient
 from free_game.models import Article, Game
 from free_game.rss import is_free_game_article, parse_rss
-from free_game.state import StateStore\nfrom free_game.notifications import (\n    NotificationStateStore, load_manual_claims, mark_manual_completions,\n    sync_auto_claim_notifications, send_due_reminders, is_success,\n)
+from free_game.state import StateStore
+from free_game.notifications import (
+    NotificationStateStore, load_manual_claims, mark_manual_completions,
+    sync_auto_claim_notifications, send_due_reminders, is_success,
+)
 from free_game.stores import EpicPromotionResolver, SteamPriceResolver
 
 
@@ -59,7 +67,7 @@ def select_articles(
 
 def process_article(
     item, http, state, ai, discord, steam, processed,
-    epic=None, claims=None, active_games=None,
+    epic=None, claims=None, active_games=None, notification_state=None,
 ):
     html, _ = http.get(item.url)
     article = parse_article(html, item.url, item.title, item.summary, item.published)
@@ -155,15 +163,15 @@ def process_article(
                             discord.send_status(game, "已自動領取", article_url=article.url)
                             notification_state.update(
                                 event_id,
-                                auto_notified_at=__import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(timespec="seconds"),
-                                completed_at=__import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(timespec="seconds"),
+                                auto_notified_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                                completed_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
                                 claim_method="auto",
                             )
                         else:
                             discord.send_status(game, "尚未領取", article_url=article.url)
                             notification_state.update(
                                 event_id,
-                                notified_at=__import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(timespec="seconds"),
+                                notified_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
                             )
             except AmbiguousDeliveryError as exc:
                 if notification_state is not None:
@@ -238,7 +246,6 @@ def main():
         include_processed=rebuild_active_index,
     )
     ai = GeminiExtractor(http, GEMINI_API_KEY, GEMINI_MODEL)
-    discord = DiscordSender(http, WEBHOOK_URL)
     steam = SteamPriceResolver(http)
     epic = EpicPromotionResolver(http)
     failures = 0
@@ -247,7 +254,7 @@ def main():
         try:
             if not process_article(
                 item, http, state, ai, discord, steam, processed,
-                epic, claims, active_games,
+                epic, claims, active_games, notification_state,
             ):
                 failures += 1
         except Exception as exc:
