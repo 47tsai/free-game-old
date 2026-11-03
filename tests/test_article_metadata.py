@@ -36,6 +36,17 @@ class ArticleMetadataTests(unittest.TestCase):
             "Epic Games Store",
         )
 
+    def test_gog_platform_from_store_url(self):
+        self.assertEqual(platform_from_url("https://www.gog.com/game/example"), "GOG")
+
+    def test_ubisoft_platform_from_store_url(self):
+        self.assertEqual(platform_from_url("https://store.ubi.com/us/game/example"), "Ubisoft")
+        self.assertEqual(platform_from_url("https://store.ubisoft.com/us/game/example"), "Ubisoft")
+
+    def test_lookalike_domains_are_not_mapped(self):
+        self.assertEqual(platform_from_url("https://notgog.com/game/example"), "")
+        self.assertEqual(platform_from_url("https://store.ubi.com.example.org/game"), "")
+
     def test_explicit_steam_rating_is_extracted(self):
         self.assertEqual(
             extract_explicit_rating("Steam 好評率 96%"),
