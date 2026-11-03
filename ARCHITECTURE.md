@@ -8,12 +8,13 @@ ntfy claim feed → claim-state sync → existing-game claim sync → 4Gamers RS
 
 - `main.py`: 串接流程，以遊戲為單位處理成功與失敗。同篇文章可產生多款遊戲，單款失敗不會丟掉其他成功結果。
 - `rss.py`: 解析 4Gamers RSS，依標題與摘要篩選限免文章。
-- `article.py`: 解析文章文字、OG Image、Steam / Epic 商店連結與連結 context；Steam Widget URL 會正規化。
-- `ai.py`: 使用 Gemini 結構化遊戲資料。AI 回傳 `store_index`，程式再從已驗證的候選 URL 取值，不直接信任 AI URL。
+- `article.py`: 解析文章文字、OG Image、Steam / Epic / GOG / Ubisoft / DLsite 商店連結與連結 context；Steam Widget URL 會正規化。
+- `ai.py`: 使用 Gemini 結構化遊戲資料，辨識 Steam、Epic、GOG、Ubisoft 與 DLsite 平台。AI 回傳 `store_index`，程式再從已驗證的候選 URL 取值，不直接信任 AI URL。
 - `stores.py`: 先以 Steam App ID 查價，無法取得時才搜尋 Steam；Epic 不會呼叫 Steam 查價。
 - `discord.py`: 發送簡潔狀態 Embed；尚未領取通知提供 4Gamers 與網站手動標記連結。
 - `claims.py`: 透過 ntfy JSON poll 增量讀取 FGC 摘要，以平台與正規化標題精確配對 Steam / Epic / GOG 遊戲；領取紀錄與訊息游標分開保存。
-- `notifications.py`: 讀取 Worker 管理的手動領取紀錄，追蹤首次通知、自動領取通知及一次性 24 小時提醒；追蹤檔案與會過期的網站活動索引分開保存。\n- `state.py`: 保存文章與遊戲狀態。遊戲 key 不綁定 4Gamers 文章 URL，因此跨文章也能去重，並保留舊版 key 的相容判斷。
+- `notifications.py`: 讀取 Worker 管理的手動領取紀錄，追蹤首次通知、自動領取通知及一次性 24 小時提醒；追蹤檔案與會過期的網站活動索引分開保存。
+- `state.py`: 保存文章與遊戲狀態。遊戲 key 不綁定 4Gamers 文章 URL，因此跨文章也能去重，並保留舊版 key 的相容判斷。
 - `http.py`: 統一 HTTP GET / POST JSON，對暫時性錯誤與 Rate Limit 有限重試。
 
 ## GitHub Actions

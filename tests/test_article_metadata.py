@@ -6,6 +6,7 @@ from free_game.ai import (
     extract_original_price,
     platform_from_url,
 )
+from free_game.article import parse_article
 
 
 class ArticleMetadataTests(unittest.TestCase):
@@ -35,6 +36,44 @@ class ArticleMetadataTests(unittest.TestCase):
             platform_from_url("https://store.epicgames.com/zh-TW/p/mafia-hotel"),
             "Epic Games Store",
         )
+
+    def test_gog_platform_from_store_url(self):
+        self.assertEqual(platform_from_url("https://www.gog.com/game/example"), "GOG")
+
+    def test_ubisoft_platform_from_store_url(self):
+        self.assertEqual(platform_from_url("https://store.ubi.com/us/game/example"), "Ubisoft")
+        self.assertEqual(platform_from_url("https://store.ubisoft.com/us/game/example"), "Ubisoft")
+
+    def test_dlsite_platform_from_store_url(self):
+        self.assertEqual(
+            platform_from_url("https://www.dlsite.com/maniax/work/=/product_id/RJ123456.html"),
+            "DLsite",
+        )
+        self.assertEqual(
+            platform_from_url("https://www.dlsite.com/eng/work/=/product_id/RJ123456.html"),
+            "DLsite",
+        )
+
+    def test_dlsite_article_link_is_extracted(self):
+        html = b"""
+        <html><body>
+        <a href="https://www.dlsite.com/maniax/work/=/product_id/RJ123456.html">DLsite</a>
+        <a href="https://www.dlsite.com.example.org/work/=/product_id/RJ999999.html">Fake DLsite</a>
+        </body></html>
+        """
+        article = parse_article(
+            html, "https://www.4gamers.com.tw/article/x", "Example"
+        )
+        self.assertEqual(
+            [item.url for item in article.store_links],
+            ["https://www.dlsite.com/maniax/work/=/product_id/RJ123456.html"],
+        )
+
+    def test_lookalike_domains_are_not_mapped(self):
+        self.assertEqual(platform_from_url("https://notgog.com/game/example"), "")
+        self.assertEqual(platform_from_url("https://store.ubi.com.example.org/game"), "")
+        self.assertEqual(platform_from_url("https://notdlsite.com/work/example"), "")
+        self.assertEqual(platform_from_url("https://www.dlsite.com.example.org/work/example"), "")
 
     def test_explicit_steam_rating_is_extracted(self):
         self.assertEqual(

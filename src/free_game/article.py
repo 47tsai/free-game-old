@@ -4,7 +4,21 @@ from urllib.parse import urljoin, urlparse
 
 from .models import Article, StoreLink
 
-ALLOWED_HOSTS = {"store.steampowered.com", "store.epicgames.com"}
+ALLOWED_HOSTS = {
+    "store.steampowered.com",
+    "store.epicgames.com",
+    "gog.com",
+    "store.ubi.com",
+    "store.ubisoft.com",
+    "dlsite.com",
+}
+
+
+def is_allowed_store_host(host):
+    host = str(host or "").lower().rstrip(".")
+    return any(host == allowed or host.endswith("." + allowed) for allowed in ALLOWED_HOSTS)
+
+
 SKIPPED_TAGS = {"script", "style", "noscript", "svg"}
 
 
@@ -58,7 +72,8 @@ class Parser(HTMLParser):
 
     def _normalized_link(self, raw):
         url = normalize_store_url(urljoin(self.base, unescape(raw)))
-        return url if urlparse(url).netloc.lower() in ALLOWED_HOSTS else ""
+        host = urlparse(url).hostname or ""
+        return url if is_allowed_store_host(host) else ""
 
     def _add_link(self, raw):
         url = self._normalized_link(raw)
