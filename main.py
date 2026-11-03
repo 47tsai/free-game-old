@@ -20,7 +20,6 @@ from free_game.active import ActiveGameStore, _event_id, _parse_deadline
 from free_game.discord import DiscordSender
 from free_game.claims import ClaimStore, load_cursor, poll_ntfy, save_cursor
 from free_game.http import AmbiguousDeliveryError, HttpClient
-from free_game.models import Article, Game
 from free_game.rss import is_free_game_article, parse_rss
 from free_game.state import StateStore
 from free_game.notifications import (
@@ -28,20 +27,6 @@ from free_game.notifications import (
     sync_auto_claim_notifications, send_due_reminders, is_success, is_auto_claimed,
 )
 from free_game.stores import EpicPromotionResolver, SteamPriceResolver
-
-
-# One-time recovery entry for an article that may have aged out of the RSS feed.
-# Once successfully processed, the normal state check prevents it being retried.
-TERRASPACE_ARTICLE_URL = (
-    "https://www.4gamers.com.tw/news/detail/82784/"
-    "terraspace-free-claim-epic-games-store"
-)
-BACKFILL_ARTICLES = (
-    Article(
-        title="EGS限免：太空生存策略《Terraspace》單周限時免費 星際跳島拓展生存圈",
-        url=TERRASPACE_ARTICLE_URL,
-    ),
-)
 
 
 def select_articles(
@@ -73,22 +58,6 @@ def process_article(
     html, _ = http.get(item.url)
     article = parse_article(html, item.url, item.title, item.summary, item.published)
     games = ai.extract(article)
-
-    if not games and item.url == TERRASPACE_ARTICLE_URL and article.store_links:
-        print("[WARN] Using verified metadata fallback for Terraspace")
-        games = [
-            Game(
-                name="Terraspace",
-                platform="Epic Games Store",
-                original_price="$6.99",
-                deadline="2026-10-28T04:00:00+08:00",
-                genre="太空策略、生存、殖民模擬",
-                gameplay="蒐集資源、建造生產設施與太空船，前往其他星球並拓展殖民地。",
-                brief="管理太空生存資源，打造太空船移居新星球。",
-                link=article.store_links[0].url,
-                image=article.image,
-            )
-        ]
 
     if not games:
         print(
@@ -294,7 +263,7 @@ def main():
     data, _ = http.get(RSS_URL)
     rss_articles = parse_rss(data)
     articles = select_articles(
-        rss_articles, state, processed, BACKFILL_ARTICLES,
+        rss_articles, state, processed,
         include_processed=rebuild_active_index,
     )
     ai = GeminiExtractor(http, GEMINI_API_KEY, GEMINI_MODEL)

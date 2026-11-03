@@ -1,5 +1,6 @@
 import json
 import re
+import time
 from urllib.parse import urlparse
 
 from .models import Game
@@ -132,7 +133,7 @@ class GeminiExtractor:
             response = json.loads(body)
             raw = response["candidates"][0]["content"]["parts"][0]["text"].strip()
         except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
-            raise RuntimeError("Gemini returned an invalid response") from exc
+            raise RuntimeError(f"Gemini returned an invalid response: {exc}") from exc
 
         raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.I)
         try:

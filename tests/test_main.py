@@ -9,7 +9,7 @@ from free_game.models import Article, Game
 from free_game.active import ActiveGameStore, _event_id
 from free_game.notifications import NotificationStateStore
 from free_game.state import StateStore
-from main import TERRASPACE_ARTICLE_URL, process_article, select_articles
+from main import process_article, select_articles
 
 
 class MainFlowTests(unittest.TestCase):
@@ -33,45 +33,6 @@ class MainFlowTests(unittest.TestCase):
             processed = {state.article_key(self.article.url)}
             selected = select_articles([], state, processed, (self.article,))
             self.assertEqual(selected, [])
-
-    def test_expired_terraspace_backfill_is_not_announced(self):
-        article = Article(
-            title="EGS限免：太空生存策略《Terraspace》",
-            url=TERRASPACE_ARTICLE_URL,
-        )
-
-        class FakeHttp:
-            def get(self, url):
-                return (
-                    b'<html><body><a href="https://store.epicgames.com/p/dimond-hunt-03a766">Terraspace</a></body></html>',
-                    {},
-                )
-
-        class FakeAI:
-            def extract(self, article):
-                return []
-
-        class FakeSteam:
-            def resolve(self, name, link):
-                return ""
-
-        class FakeDiscord:
-            def __init__(self):
-                self.sent = []
-
-            def send(self, game, article_title, article_url):
-                self.sent.append((game.name, game.link, article_url))
-
-        with tempfile.TemporaryDirectory() as d:
-            state = StateStore(d + "/state.json", 100)
-            processed = state.load()
-            discord = FakeDiscord()
-            success = process_article(
-                article, FakeHttp(), state, FakeAI(), discord, FakeSteam(), processed
-            )
-            self.assertTrue(success)
-            self.assertEqual(discord.sent, [])
-            self.assertIn(state.article_key(article.url), processed)
 
     def test_stale_claim_status_defers_notification_and_article_processing(self):
         class FakeHttp:
