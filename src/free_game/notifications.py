@@ -46,10 +46,11 @@ class NotificationStateStore:
         return self.records
 
     def get(self, event_id):
-        return self.records.setdefault(str(event_id), {})
+        """Read a record without creating persistent state as a side effect."""
+        return self.records.get(str(event_id), {})
 
     def update(self, event_id, **values):
-        self.get(event_id).update(values)
+        self.records.setdefault(str(event_id), {}).update(values)
 
     def save(self):
         self.path.parent.mkdir(parents=True, exist_ok=True)
