@@ -27,6 +27,8 @@ def platform_key(value):
         return "steam"
     if "epic" in value:
         return "epic"
+    if "gog" in value:
+        return "gog"
     return ""
 
 
