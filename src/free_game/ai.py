@@ -44,18 +44,21 @@ def extract_deadline(text):
         return ""
     year, month, day = map(int, match.group(1, 2, 3))
     period, hour, minute = match.group(4) or "", int(match.group(5)), int(match.group(6) or 0)
-    if period == "凌晨" and hour == 12:
-        hour = 0
-    elif period in ("下午", "晚上") and hour < 12:
-        hour += 12
-    elif period == "中午" and hour < 11:
-        hour += 12
     try:
-        from datetime import datetime
-        datetime(year, month, day, hour, minute)
+        from datetime import datetime, timedelta
+
+        if period in ("凌晨", "上午", "早上") and hour == 12:
+            hour = 0
+        elif period in ("下午", "晚上") and hour < 12:
+            hour += 12
+
+        deadline = datetime(year, month, day, hour, minute)
+        if period == "晚上" and hour == 12:
+            deadline += timedelta(days=1)
+            deadline = deadline.replace(hour=0)
     except ValueError:
         return ""
-    return f"{year:04d}-{month:02d}-{day:02d}T{hour:02d}:{minute:02d}:00+08:00"
+    return deadline.strftime("%Y-%m-%dT%H:%M:00+08:00")
 
 
 def extract_explicit_rating(text):
