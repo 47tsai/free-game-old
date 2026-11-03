@@ -34,6 +34,36 @@ class ArticleTests(unittest.TestCase):
             ("https://store.steampowered.com/app/12345/",),
         )
 
+    def test_gog_and_ubisoft_links_are_extracted(self):
+        html = b"""
+        <html><body>
+        <a href="https://www.gog.com/game/example">GOG Example</a>
+        <a href="https://store.ubi.com/us/game/example">Ubisoft Example</a>
+        </body></html>
+        """
+        article = parse_article(
+            html, "https://www.4gamers.com.tw/article/x", "Example"
+        )
+        self.assertEqual(
+            [item.url for item in article.store_links],
+            [
+                "https://www.gog.com/game/example",
+                "https://store.ubi.com/us/game/example",
+            ],
+        )
+
+    def test_lookalike_store_domains_are_rejected(self):
+        html = b"""
+        <html><body>
+        <a href="https://fakegog.com/game/example">Fake GOG</a>
+        <a href="https://store.ubi.com.example.org/game">Fake Ubisoft</a>
+        </body></html>
+        """
+        article = parse_article(
+            html, "https://www.4gamers.com.tw/article/x", "Example"
+        )
+        self.assertEqual(article.store_links, ())
+
     def test_anchor_context_is_preserved(self):
         html = b"""
         <html><body>
