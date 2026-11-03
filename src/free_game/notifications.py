@@ -145,15 +145,20 @@ def mark_manual_completions(active_games, notification_state, manual_claims, now
         return 0
     changed = 0
     for event_id in active_games.records:
+        record = notification_state.get(event_id)
         if is_manual(manual_claims, event_id):
-            record = notification_state.get(event_id)
             if record.get("claim_method") != "manual":
                 notification_state.update(
                     event_id, completed_at=_iso(now), claim_method="manual"
                 )
                 changed += 1
+        elif record.get("claim_method") == "manual":
+            # The website supports unmarking. Resume pending reminders if it is undone.
+            notification_state.update(
+                event_id, completed_at=None, claim_method=None
+            )
+            changed += 1
     return changed
-
 
 def send_due_reminders(active_games, notification_state, manual_claims, discord, now=None):
     if manual_claims is None:
