@@ -76,6 +76,10 @@ def platform_from_url(url):
         return "Epic Games Store"
     if host == "store.steampowered.com" or host.endswith(".steampowered.com"):
         return "Steam"
+    if host == "gog.com" or host.endswith(".gog.com"):
+        return "GOG"
+    if host in {"store.ubi.com", "store.ubisoft.com"}:
+        return "Ubisoft"
     return ""
 
 
