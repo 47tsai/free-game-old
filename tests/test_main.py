@@ -34,7 +34,7 @@ class MainFlowTests(unittest.TestCase):
             selected = select_articles([], state, processed, (self.article,))
             self.assertEqual(selected, [])
 
-    def test_terraspace_uses_verified_fallback_when_ai_returns_empty(self):
+    def test_expired_terraspace_backfill_is_not_announced(self):
         article = Article(
             title="EGS限免：太空生存策略《Terraspace》",
             url=TERRASPACE_ARTICLE_URL,
@@ -70,11 +70,7 @@ class MainFlowTests(unittest.TestCase):
                 article, FakeHttp(), state, FakeAI(), discord, FakeSteam(), processed
             )
             self.assertTrue(success)
-            self.assertEqual(len(discord.sent), 1)
-            self.assertEqual(discord.sent[0][0], "Terraspace")
-            self.assertEqual(
-                discord.sent[0][1], "https://store.epicgames.com/p/dimond-hunt-03a766"
-            )
+            self.assertEqual(discord.sent, [])
             self.assertIn(state.article_key(article.url), processed)
 
     def test_empty_extraction_does_not_mark_article_processed(self):
