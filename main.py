@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import json
 
 from free_game.ai import GeminiExtractor, GeminiPromptBlockedError
 from free_game.article import parse_article
@@ -58,6 +59,10 @@ def process_article(
     html, _ = http.get(item.url)
     article = parse_article(html, item.url, item.title, item.summary, item.published)
     games = ai.extract(article)
+    print(
+        f"[INFO] {item.url} | games extracted: {len(games)}; "
+        f"names={json.dumps([game.name for game in games], ensure_ascii=False)}"
+    )
 
     if not games:
         print(
