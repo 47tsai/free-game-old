@@ -86,34 +86,57 @@ def is_success(status):
 
 
 def sync_auto_claim_notifications(active_games, claims, notification_state, discord, now=None):
+    """Send one success embed when an active campaign transitions to claimed."""
     sent = 0
     for event_id, item in list(active_games.records.items()):
         previous_status = item.get("claim_status", "")
         status = claims.get_status(Game(name=item.get("name", ""), platform=item.get("platform", "")))
-        item["claim_status"] = status
         record = notification_state.get(event_id)
-        if (
-            not is_success(status) or is_success(previous_status)
-            or record.get("claim_method") == "manual"
-            or record.get("auto_notified_at") or record.get("auto_uncertain")
-        ):
+
+        if not is_success(status):
+            item["claim_status"] = status
             continue
-        game = Game(name=item.get("name", ""), platform=item.get("platform", ""), link=item.get("link", ""))
+        if is_success(previous_status):
+            item["claim_status"] = status
+            if record.get("notified_at") and not record.get("completed_at"):
+                notification_state.update(
+                    event_id, completed_at=_iso(now), claim_method="auto"
+                )
+            continue
+        if (
+            record.get("claim_method") == "manual"
+            or record.get("auto_notified_at")
+            or record.get("auto_uncertain")
+        ):
+            item["claim_status"] = status
+            continue
+
+        game = Game(
+            name=item.get("name", ""),
+            platform=item.get("platform", ""),
+            link=item.get("link", ""),
+        )
         try:
             discord.send_status(game, "已自動領取", article_url=item.get("article_url", ""))
         except AmbiguousDeliveryError as exc:
+            item["claim_status"] = status
             notification_state.update(event_id, auto_uncertain=True)
             print(f"[WARN] auto-claim notification outcome unknown for {game.name}: {exc}")
             continue
         except Exception as exc:
+            # Keep the previous claim_status so the transition is retried next run.
             print(f"[WARN] auto-claim notification failed for {game.name}: {exc}")
             continue
+
+        item["claim_status"] = status
         notification_state.update(
-            event_id, auto_notified_at=_iso(now), completed_at=_iso(now), claim_method="auto"
+            event_id,
+            auto_notified_at=_iso(now),
+            completed_at=_iso(now),
+            claim_method="auto",
         )
         sent += 1
     return sent
-
 
 def mark_manual_completions(active_games, notification_state, manual_claims, now=None):
     if manual_claims is None:
