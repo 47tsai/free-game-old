@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from free_game.ai import GeminiExtractor
+from free_game.ai import GeminiExtractor, GeminiPromptBlockedError
 from free_game.article import parse_article
 from free_game.config import (
     GEMINI_API_KEY,
@@ -195,6 +195,18 @@ def process_article(
     return not article_failed
 
 
+def log_article_error(item, exc):
+    """Return True when an article error is a known non-fatal Gemini safety block."""
+    if isinstance(exc, GeminiPromptBlockedError):
+        print(
+            f"[WARN] {item.url}: skipped because Gemini blocked the prompt "
+            f"({exc.reason}); article remains unprocessed for a later retry"
+        )
+        return True
+    print(f"[ERROR] {item.url}: {exc}")
+    return False
+
+
 def main():
     http = HttpClient(USER_AGENT)
     state = StateStore(STATE_FILE, MAX_PROCESSED)
@@ -279,8 +291,8 @@ def main():
             ):
                 failures += 1
         except Exception as exc:
-            failures += 1
-            print(f"[ERROR] {item.url}: {exc}")
+            if not log_article_error(item, exc):
+                failures += 1
         finally:
             state.save(processed)
             active_games.prune()

@@ -91,6 +91,14 @@ def platform_from_url(url):
     return ""
 
 
+class GeminiPromptBlockedError(RuntimeError):
+    """A Gemini safety block that should skip only the current article."""
+
+    def __init__(self, reason):
+        self.reason = str(reason)
+        super().__init__(f"Gemini blocked the prompt: {self.reason}")
+
+
 class GeminiExtractor:
     def __init__(self, http, api_key, model):
         self.http, self.api_key, self.model = http, api_key, model
@@ -127,7 +135,7 @@ class GeminiExtractor:
                 prompt_feedback = response.get("promptFeedback")
                 if isinstance(prompt_feedback, dict) and prompt_feedback.get("blockReason"):
                     reason = prompt_feedback["blockReason"]
-                    raise RuntimeError(f"Gemini blocked the prompt: {reason}")
+                    raise GeminiPromptBlockedError(reason)
 
                 candidates = response.get("candidates")
                 if isinstance(candidates, list) and candidates:
