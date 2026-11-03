@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 import json
 
-from free_game.ai import GeminiExtractor, GeminiPromptBlockedError
+from free_game.ai import RuleBasedExtractor
 from free_game.article import parse_article
 from free_game.config import (
     GEMINI_API_KEY,
@@ -52,13 +52,13 @@ def select_articles(
 
 
 def process_article(
-    item, http, state, ai, discord, steam, processed,
+    item, http, state, extractor, discord, steam, processed,
     epic=None, claims=None, active_games=None, notification_state=None,
     allow_claim_notifications=True,
 ):
     html, _ = http.get(item.url)
     article = parse_article(html, item.url, item.title, item.summary, item.published)
-    games = ai.extract(article)
+    games = extractor.extract(article)
     print(
         f"[INFO] {item.url} | games extracted: {len(games)}; "
         f"names={json.dumps([game.name for game in games], ensure_ascii=False)}"
@@ -283,7 +283,7 @@ def main():
         rss_articles, state, processed,
         include_processed=rebuild_active_index,
     )
-    ai = GeminiExtractor(http, GEMINI_API_KEY, GEMINI_MODEL)
+    extractor = RuleBasedExtractor()
     steam = SteamPriceResolver(http)
     epic = EpicPromotionResolver(http)
     failures = 0
@@ -291,7 +291,7 @@ def main():
     for item in articles:
         try:
             if not process_article(
-                item, http, state, ai, discord, steam, processed,
+                item, http, state, extractor, discord, steam, processed,
                 epic, claims, active_games, notification_state,
             ):
                 failures += 1
