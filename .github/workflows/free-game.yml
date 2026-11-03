@@ -24,7 +24,6 @@ jobs:
       - name: Run notifier
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           NTFY_URL: https://ntfy.sh/47tsai-fgc
         run: PYTHONPATH=src python main.py
       - name: Save state
