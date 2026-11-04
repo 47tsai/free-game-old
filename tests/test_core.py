@@ -529,7 +529,7 @@ class RuleBasedExtractorTests(unittest.TestCase):
         )
         self.assertEqual(RuleBasedExtractor().extract(article), [])
 
-    def test_extracts_dlsite_links(self):
+    def test_skips_non_software_dlsite_categories(self):
         from free_game.ai import RuleBasedExtractor
 
         article = parse_article(
@@ -537,9 +537,7 @@ class RuleBasedExtractorTests(unittest.TestCase):
             "https://example.com/article",
             "《Example Game》限時免費",
         )
-        games = RuleBasedExtractor().extract(article)
-        self.assertEqual([game.name for game in games], ["Example Game"])
-        self.assertEqual(games[0].platform, "DLsite")
+        self.assertEqual(RuleBasedExtractor().extract(article), [])
 
     def test_extracts_all_ages_dlsite_software_links(self):
         from free_game.ai import RuleBasedExtractor
