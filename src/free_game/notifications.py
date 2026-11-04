@@ -212,7 +212,7 @@ def send_due_reminders(active_games, notification_state, manual_claims, discord,
             continue
         game = Game(name=item.get("name", ""), platform=item.get("platform", ""), link=item.get("link", ""))
         try:
-            discord.send_status(game, "領取提醒", include_buttons=False)
+            discord.send_status(game, "尚未領取", include_buttons=False)
         except AmbiguousDeliveryError as exc:
             notification_state.update(event_id, reminder_uncertain=True)
             print(f"[WARN] reminder outcome unknown for {game.name}: {exc}")
