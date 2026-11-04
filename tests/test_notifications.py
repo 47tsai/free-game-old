@@ -64,7 +64,7 @@ class NotificationStateTests(unittest.TestCase):
             state.update(event_id, notified_at="2026-11-02T11:59:59+00:00")
             discord = FakeDiscord()
             self.assertEqual(send_due_reminders(active, state, {}, discord, self.now), 1)
-            self.assertEqual(discord.sent[0][1], "領取提醒")
+            self.assertEqual(discord.sent[0][1], "尚未領取")
             self.assertFalse(discord.sent[0][2].get("include_buttons", True))
             self.assertEqual(send_due_reminders(active, state, {}, discord, self.now), 0)
             self.assertEqual(len(discord.sent), 1)
