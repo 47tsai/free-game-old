@@ -328,7 +328,7 @@ class MainFlowTests(unittest.TestCase):
         success, sent, notifications, event_id, *_ = self._run_notification_flow()
         self.assertTrue(success)
         self.assertEqual([item[1] for item in sent], ["NEW_GAME"])
-        self.assertEqual(sent[0][2]["link"], game.link)
+        self.assertEqual(sent[0][2]["link"], "https://www.gog.com/game/notification-example")
         self.assertIsNotNone(notifications.get(event_id).get("notified_at"))
 
     def test_manual_completion_suppresses_initial_pending_notification(self):
