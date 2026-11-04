@@ -173,7 +173,7 @@ def process_article(
                                 claim_method="owned",
                             )
                         else:
-                            discord.send_status(game, "尚未領取", article_url=article.url)
+                            discord.send(game, article.title, article.url)
                             notification_state.update(
                                 event_id,
                                 notified_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
