@@ -60,6 +60,7 @@ class NotificationStateTests(unittest.TestCase):
     def test_sends_one_reminder_after_24_hours(self):
         with tempfile.TemporaryDirectory() as directory:
             active, state, event_id = self.make_store(directory)
+            active.records[event_id]["created_at"] = "2026-11-02T11:59:59+00:00"
             state.update(event_id, notified_at="2026-11-02T11:59:59+00:00")
             discord = FakeDiscord()
             self.assertEqual(send_due_reminders(active, state, {}, discord, self.now), 1)
@@ -71,6 +72,7 @@ class NotificationStateTests(unittest.TestCase):
     def test_manual_claim_suppresses_reminder(self):
         with tempfile.TemporaryDirectory() as directory:
             active, state, event_id = self.make_store(directory)
+            active.records[event_id]["created_at"] = "2026-11-02T11:00:00+00:00"
             state.update(event_id, notified_at="2026-11-02T11:00:00+00:00")
             self.assertEqual(send_due_reminders(active, state, {event_id: {"claimed": True}}, FakeDiscord(), self.now), 0)
 
@@ -98,6 +100,7 @@ class NotificationStateTests(unittest.TestCase):
     def test_ambiguous_reminder_is_not_retried(self):
         with tempfile.TemporaryDirectory() as directory:
             active, state, event_id = self.make_store(directory)
+            active.records[event_id]["created_at"] = "2026-11-02T11:00:00+00:00"
             state.update(event_id, notified_at="2026-11-02T11:00:00+00:00")
             discord = FakeDiscord(AmbiguousDeliveryError("unknown"))
             self.assertEqual(send_due_reminders(active, state, {}, discord, self.now), 0)
