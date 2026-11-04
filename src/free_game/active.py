@@ -56,8 +56,10 @@ class ActiveGameStore:
         if not deadline or deadline <= now:
             return False
         event_id = _event_id(game)
+        previous = self.records.get(event_id, {})
         self.records[event_id] = {
-            "id": event_id, "name": str(game.name or "")[:200], "platform": str(game.platform or "")[:100],
+            "id": event_id, "created_at": previous.get("created_at") or now.astimezone(timezone.utc).isoformat(timespec="seconds"),
+            "name": str(game.name or "")[:200], "platform": str(game.platform or "")[:100],
             "link": str(game.link or "")[:2000], "image": str(game.image or "")[:2000],
             "deadline": deadline.isoformat(timespec="seconds"), "original_price": str(game.original_price or "")[:100],
             "genre": str(game.genre or "")[:200], "brief": str(game.brief or "")[:1000],
