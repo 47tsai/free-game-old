@@ -284,7 +284,10 @@ class MainFlowTests(unittest.TestCase):
                 self.sent.append((game.name, status, kwargs))
 
             def send(self, game, article_title, article_url):
-                self.sent.append((game.name, "尚未領取", {}))
+                self.sent.append((game.name, "NEW_GAME", {
+                    "article_title": article_title, "article_url": article_url,
+                    "link": game.link, "image": game.image,
+                }))
 
         with tempfile.TemporaryDirectory() as directory:
             state = StateStore(directory + "/processed.json", 100)
@@ -324,7 +327,8 @@ class MainFlowTests(unittest.TestCase):
     def test_initial_pending_notification_records_first_notice_time(self):
         success, sent, notifications, event_id, *_ = self._run_notification_flow()
         self.assertTrue(success)
-        self.assertEqual([item[1] for item in sent], ["尚未領取"])
+        self.assertEqual([item[1] for item in sent], ["NEW_GAME"])
+        self.assertEqual(sent[0][2]["link"], game.link)
         self.assertIsNotNone(notifications.get(event_id).get("notified_at"))
 
     def test_manual_completion_suppresses_initial_pending_notification(self):
