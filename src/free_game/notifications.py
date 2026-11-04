@@ -204,7 +204,7 @@ def send_due_reminders(active_games, notification_state, manual_claims, discord,
             or is_manual(manual_claims, event_id)
         ):
             continue
-        notified_at = _parse(record.get("notified_at"))
+        notified_at = _parse(item.get("created_at") or record.get("notified_at"))
         deadline = _parse(item.get("deadline"))
         if not notified_at or not deadline or deadline <= now:
             continue
