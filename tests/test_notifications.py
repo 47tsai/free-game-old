@@ -79,6 +79,7 @@ class NotificationStateTests(unittest.TestCase):
     def test_unmarking_manual_claim_resumes_pending_reminder(self):
         with tempfile.TemporaryDirectory() as directory:
             active, state, event_id = self.make_store(directory)
+            active.records[event_id]["created_at"] = "2026-11-02T11:00:00+00:00"
             state.update(
                 event_id,
                 notified_at="2026-11-02T11:00:00+00:00",
