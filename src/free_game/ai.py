@@ -101,14 +101,14 @@ class RuleBasedExtractor:
 
     GENERIC_LABELS = {
         "steam", "steam 商店", "epic games store", "epic games",
-        "gog", "gog.com", "ubisoft", "ubisoft store",
+        "gog", "gog.com", "ubisoft", "ubisoft store", "dlsite",
         "立即領取", "前往商店", "商店連結", "點此前往", "點此領取",
     }
 
     STORE_SUFFIX_RE = re.compile(
         r"\s*(?:[｜|]|[-（(])\s*"
         r"(?:steam(?: 商店)?|epic games store|epic games|gog(?:\.com)?|"
-        r"ubisoft(?: store)?)\s*[）)]?\s*$",
+        r"ubisoft(?: store)?|dlsite)\s*[）)]?\s*$",
         re.IGNORECASE,
     )
 
@@ -126,29 +126,19 @@ class RuleBasedExtractor:
 
     @staticmethod
     def _headline_titles(title):
-        # 4Gamers commonly encloses the formal game title in 《》.
+        # Encloses titles in 《》, 「」, or 『』.
         matches = re.findall(r"《([^《》]{1,200})》", str(title or ""))
         if not matches:
-            matches = re.findall(r"「([^「」]{1,200})」", str(title or ""))
+            matches = re.findall(r"[「『]([^「」『』]{1,200})[」』]", str(title or ""))
         return list(dict.fromkeys(item.strip() for item in matches if item.strip()))
 
     def extract(self, article):
         if not article.store_links:
             return []
 
-        # DLsite links are deliberately excluded from automated extraction.
         result = []
         seen = set()
         for store_link in article.store_links:
-            parsed = urlparse(store_link.url)
-            host = parsed.hostname or ""
-            if host == "dlsite.com" or host.endswith(".dlsite.com"):
-                # Only process the explicitly all-ages software category.
-                # Adult and unknown DLsite categories are excluded.
-                path = parsed.path.lower()
-                if not path.startswith("/soft/"):
-                    continue
-
             name = self._clean_name(store_link.context)
             if not name and len(article.store_links) == 1:
                 titles = self._headline_titles(article.title)
