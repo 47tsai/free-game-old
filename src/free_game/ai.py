@@ -139,6 +139,13 @@ class RuleBasedExtractor:
         result = []
         seen = set()
         for store_link in article.store_links:
+            parsed = urlparse(store_link.url)
+            host = parsed.hostname or ""
+            if host == "dlsite.com" or host.endswith(".dlsite.com"):
+                # Restrict automated DLsite extraction to the all-ages software category.
+                if not parsed.path.lower().startswith("/soft/"):
+                    continue
+
             name = self._clean_name(store_link.context)
             if not name and len(article.store_links) == 1:
                 titles = self._headline_titles(article.title)
