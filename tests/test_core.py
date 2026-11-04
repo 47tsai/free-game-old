@@ -428,17 +428,16 @@ class DiscordTests(unittest.TestCase):
         )
 
         embed = self._send(game).payload["embeds"][0]
-        self.assertEqual(embed["title"], "尚未領取")
-        self.assertIn("Example", embed["description"])
+        self.assertEqual(embed["title"], "Example")
         self.assertIn("Steam", embed["description"])
         self.assertNotIn("原價", embed["description"])
         self.assertNotIn("期限", embed["description"])
         self.assertNotIn("遊戲類型", embed["description"])
         self.assertNotIn("玩家評價", embed["description"])
         self.assertNotIn("url", embed)
-        self.assertNotIn("image", embed)
+        self.assertEqual(embed["image"]["url"], "https://example.com/image.jpg")
         self.assertEqual(embed["footer"]["text"], "Free Game Notifier")
-        self.assertEqual(embed["color"], 0xFEE75C)
+        self.assertEqual(embed["color"], 0x5865F2)
 
     def test_sender_adds_two_link_buttons(self):
         game = Game(
@@ -452,13 +451,16 @@ class DiscordTests(unittest.TestCase):
         self.assertFalse(http.kwargs["retry_transport_errors"])
         self.assertTrue(http.kwargs["ambiguous_on_error"])
         buttons = http.payload["components"][0]["components"]
-        self.assertEqual(len(buttons), 2)
-        self.assertEqual(buttons[0]["label"], "4Gamers")
-        self.assertEqual(buttons[0]["url"], "https://example.com/article")
+        self.assertEqual(len(buttons), 3)
+        self.assertEqual(buttons[0]["label"], "前往領取")
+        self.assertEqual(buttons[0]["url"], "https://store.steampowered.com/app/1/")
         self.assertEqual(buttons[0]["style"], 5)
-        self.assertEqual(buttons[1]["label"], "網站標記已領取")
-        self.assertEqual(buttons[1]["url"], "https://fg.chi.qzz.io/")
+        self.assertEqual(buttons[1]["label"], "4Gamers 原文")
+        self.assertEqual(buttons[1]["url"], "https://example.com/article")
         self.assertEqual(buttons[1]["style"], 5)
+        self.assertEqual(buttons[2]["label"], "網站標記已領取")
+        self.assertEqual(buttons[2]["url"], "https://fg.chi.qzz.io/")
+        self.assertEqual(buttons[2]["style"], 5)
 
     def test_sender_disables_mentions(self):
         game = Game(name="Example", link="https://store.steampowered.com/app/1/")
